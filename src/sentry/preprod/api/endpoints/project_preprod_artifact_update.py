@@ -1,3 +1,5 @@
+import logging
+
 import jsonschema
 import orjson
 from rest_framework.exceptions import PermissionDenied
@@ -9,10 +11,13 @@ from sentry.api.api_owners import ApiOwner
 from sentry.api.api_publish_status import ApiPublishStatus
 from sentry.api.base import region_silo_endpoint
 from sentry.api.bases.project import ProjectEndpoint
+from sentry.models.release import Release
 from sentry.preprod.analytics import PreprodArtifactApiUpdateEvent
 from sentry.preprod.authentication import LaunchpadRpcSignatureAuthentication
 from sentry.preprod.models import PreprodArtifact
 from sentry.preprod.vcs.status_checks.size.tasks import create_preprod_status_check_task
+
+logger = logging.getLogger(__name__)
 
 
 def validate_preprod_artifact_update_schema(request_body: bytes) -> tuple[dict, str | None]:
@@ -81,6 +86,61 @@ def validate_preprod_artifact_update_schema(request_body: bytes) -> tuple[dict, 
         return {}, validation_error_message
     except (orjson.JSONDecodeError, TypeError):
         return {}, "Invalid json body"
+
+
+def find_or_create_release(
+    project, package: str, version: str, build_number: int | None = None
+) -> Release | None:
+    """
+    Find or create a release based on package, version, and project.
+
+    Creates release version in format: package@version+build_number (if build_number provided)
+    or package@version (if no build_number)
+
+    Args:
+        project: The project to search/create the release for
+        package: The package identifier (e.g., "com.myapp.MyApp")
+        version: The version string (e.g., "1.2.300")
+        build_number: Optional build number to include in release version
+
+    Returns:
+        Release object if found/created, None if creation fails
+    """
+    try:
+        base_version = f"{package}@{version}"
+        existing_release = Release.objects.filter(
+            organization_id=project.organization_id,
+            projects=project,
+            version__startswith=base_version,
+        ).first()
+
+        if existing_release:
+            return existing_release
+
+        if build_number is not None:
+            release_version = f"{package}@{version}+{build_number}"
+        else:
+            release_version = base_version
+
+        release = Release.get_or_create(
+            project=project,
+            version=release_version,
+        )
+
+        return release
+
+    except Exception as e:
+        logger.exception(
+            "Failed to find or create release",
+            extra={
+                "project_id": project.id,
+                "package": package,
+                "version": version,
+                "build_number": build_number,
+                "error": str(e),
+            },
+        )
+        return None
 
 
 @region_silo_endpoint
@@ -219,6 +279,18 @@ class ProjectPreprodArtifactUpdateEndpoint(ProjectEndpoint):
                 kwargs={
                     "preprod_artifact_id": artifact_id_int,
                 }
+            )
+
+        if (
+            preprod_artifact.app_id
+            and preprod_artifact.build_version
+            and preprod_artifact.state == PreprodArtifact.ArtifactState.PROCESSED
+        ):
+            find_or_create_release(
+                project=project,
+                package=preprod_artifact.app_id,
+                version=preprod_artifact.build_version,
+                build_number=preprod_artifact.build_number,
             )
 
         return Response(
