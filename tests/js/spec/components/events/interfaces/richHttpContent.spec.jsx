@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme, shallow} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import RichHttpContent from 'app/components/events/interfaces/richHttpContent/richHttpContent';
 
@@ -19,10 +19,10 @@ describe('RichHttpContent', function () {
         env: {},
         inferredContentType: null,
       };
-      const wrapper = mountWithTheme(<RichHttpContent data={data} />);
+      const {container} = renderWithTheme(<RichHttpContent data={data} />);
       expect(
-        wrapper.find('[data-test-id="rich-http-content-body-section-pre"]')
-      ).toBeTruthy();
+        container.querySelector('[data-test-id="rich-http-content-body-section-pre"]')
+      ).toBeInTheDocument();
     });
 
     it('should return a KeyValueList element when inferred Content-Type is x-www-form-urlencoded', function () {
@@ -34,10 +34,11 @@ describe('RichHttpContent', function () {
         env: {},
         inferredContentType: 'application/x-www-form-urlencoded',
       };
-      const wrapper = mountWithTheme(<RichHttpContent data={data} />);
-      expect(
-        wrapper.find('[data-test-id="rich-http-content-body-key-value-list"]')
-      ).toBeTruthy();
+      const {container} = renderWithTheme(<RichHttpContent data={data} />);
+      // KeyValueList renders as a table with key/value cells
+      expect(container.querySelector('table.key-value')).toBeInTheDocument();
+      const keys = container.querySelectorAll('td.key');
+      expect(keys.length).toBeGreaterThan(0);
     });
 
     it('should return a ContextData element when inferred Content-Type is application/json', function () {
@@ -49,10 +50,10 @@ describe('RichHttpContent', function () {
         env: {},
         inferredContentType: 'application/json',
       };
-      const wrapper = mountWithTheme(<RichHttpContent data={data} />);
+      const {container} = renderWithTheme(<RichHttpContent data={data} />);
       expect(
-        wrapper.find('[data-test-id="rich-http-content-body-context-data"]')
-      ).toBeTruthy();
+        container.querySelector('[data-test-id="rich-http-content-body-context-data"]')
+      ).toBeInTheDocument();
     });
 
     it('should not blow up in a malformed uri', function () {
@@ -65,7 +66,9 @@ describe('RichHttpContent', function () {
         cookies: [],
         env: {},
       };
-      expect(() => shallow(<RichHttpContent data={data} />)).not.toThrow(URIError);
+      expect(() => renderWithTheme(<RichHttpContent data={data} />)).not.toThrow(
+        URIError
+      );
     });
 
     it("should not cause an invariant violation if data.data isn't a string", function () {
@@ -77,7 +80,7 @@ describe('RichHttpContent', function () {
         env: {},
       };
 
-      expect(() => mountWithTheme(<RichHttpContent data={data} />)).not.toThrow();
+      expect(() => renderWithTheme(<RichHttpContent data={data} />)).not.toThrow();
     });
   });
 });

@@ -1,6 +1,11 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  fireEvent,
+  renderWithTheme,
+  screen,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
 
 import {openModal} from 'app/actionCreators/modal';
 import SuggestProjectCTA from 'app/components/suggestProjectCTA';
@@ -34,21 +39,24 @@ function generateWrapperAndSetMocks(inputProps, mobileEventResp, promptResp) {
     }),
     ...inputProps,
   };
-  return mountWithTheme(<SuggestProjectCTA {...props} />);
+  return renderWithTheme(<SuggestProjectCTA {...props} />);
 }
 
 describe('SuggestProjectCTA', function () {
   it('user agent match and and open modal', async () => {
-    const wrapper = generateWrapperAndSetMocks();
-    await tick();
-    wrapper.update();
-    expect(wrapper.find('Alert')).toHaveLength(1);
-    wrapper.find('a').simulate('click');
+    generateWrapperAndSetMocks();
+
+    const alert = await screen.findByText(/We have a sneaking suspicion/);
+    expect(alert).toBeInTheDocument();
+
+    const link = screen.getByText('Start Monitoring');
+    fireEvent.click(link);
+
     expect(openModal).toHaveBeenCalled();
   });
 
   it('mobile event match', async () => {
-    const wrapper = generateWrapperAndSetMocks(
+    generateWrapperAndSetMocks(
       {
         event: TestStubs.Event({
           entries: [{type: 'request', data: {headers: [['User-Agent', 'sentry/123']]}}],
@@ -56,36 +64,41 @@ describe('SuggestProjectCTA', function () {
       },
       {browserName: 'okhttp'}
     );
-    await tick();
-    wrapper.update();
-    expect(wrapper.find('Alert')).toHaveLength(1);
+
+    const alert = await screen.findByText(/We have a sneaking suspicion/);
+    expect(alert).toBeInTheDocument();
   });
 
   it('user agent does not match', async () => {
-    const wrapper = generateWrapperAndSetMocks({
+    generateWrapperAndSetMocks({
       event: TestStubs.Event({
         entries: [{type: 'request', data: {headers: [['User-Agent', 'sentry/123']]}}],
       }),
     });
-    await tick();
-    wrapper.update();
-    expect(wrapper.find('Alert')).toHaveLength(0);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/We have a sneaking suspicion/)).not.toBeInTheDocument();
+    });
   });
+
   it('has mobile project', async () => {
     const projects = [TestStubs.Project({platform: 'android'})];
-    const wrapper = generateWrapperAndSetMocks({
+    generateWrapperAndSetMocks({
       projects,
     });
-    await tick();
-    wrapper.update();
-    expect(wrapper.find('Alert')).toHaveLength(0);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/We have a sneaking suspicion/)).not.toBeInTheDocument();
+    });
   });
+
   it('prompt is dismissed', async () => {
-    const wrapper = generateWrapperAndSetMocks(undefined, undefined, {
+    generateWrapperAndSetMocks(undefined, undefined, {
       data: {dismissed_ts: 1234},
     });
-    await tick();
-    wrapper.update();
-    expect(wrapper.find('Alert')).toHaveLength(0);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/We have a sneaking suspicion/)).not.toBeInTheDocument();
+    });
   });
 });

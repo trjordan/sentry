@@ -1,8 +1,14 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
 
 import StacktraceLinkModal from 'app/components/events/interfaces/stacktraceLinkModal';
+import Indicators from 'app/components/indicators';
 
 describe('StacktraceLinkModal', function () {
   const org = TestStubs.Organization();
@@ -14,13 +20,14 @@ describe('StacktraceLinkModal', function () {
   const sourceUrl = 'https://github.com/getsentry/sentry/blob/master/src/sentry/app.py';
 
   const closeModal = jest.fn();
+  const onSubmit = jest.fn();
   const modalElements = {
     Header: p => p.children,
     Body: p => p.children,
     Footer: p => p.children,
   };
 
-  const createWrapper = (statusCode = 200) => {
+  const renderComponent = (statusCode = 200) => {
     const configData = {
       stackRoot: '',
       sourceRoot: 'src/',
@@ -47,46 +54,53 @@ describe('StacktraceLinkModal', function () {
       body: {config, sourceUrl, integrations: [integration]},
     });
 
-    return mountWithTheme(
-      <StacktraceLinkModal
-        {...modalElements}
-        closeModal={closeModal}
-        filename={filename}
-        integrations={[integration]}
-        organization={org}
-        project={project}
-      />,
-      TestStubs.routerContext()
+    return renderWithTheme(
+      <React.Fragment>
+        <Indicators />
+        <StacktraceLinkModal
+          {...modalElements}
+          closeModal={closeModal}
+          onSubmit={onSubmit}
+          filename={filename}
+          integrations={[integration]}
+          organization={org}
+          project={project}
+        />
+      </React.Fragment>
     );
   };
 
-  const submitQuickSetupInput = async wrapper => {
-    wrapper.find('input').simulate('change', {target: {value: sourceUrl}});
-    wrapper.find('Button[data-test-id="quick-setup-button"]').simulate('click');
-
-    await tick();
-    wrapper.update();
+  const submitQuickSetupInput = async () => {
+    const input = screen.getByPlaceholderText(/https:\/\/github.com\/helloworld/);
+    await userEvent.type(input, sourceUrl);
+    await userEvent.click(screen.getByRole('button', {name: 'Submit'}));
   };
 
   beforeEach(function () {
     closeModal.mockReset();
+    onSubmit.mockReset();
     MockApiClient.clearMockResponses();
   });
 
-  it('renders manual setup option', async function () {
-    const wrapper = createWrapper();
-    expect(wrapper.find('IntegrationName').text()).toEqual('Test Integration');
+  it('renders manual setup option', function () {
+    renderComponent();
+    expect(screen.getByText('Test Integration')).toBeInTheDocument();
   });
 
   it('closes modal after successful quick setup', async function () {
-    const wrapper = createWrapper();
-    await submitQuickSetupInput(wrapper);
-    expect(closeModal).toHaveBeenCalled();
+    renderComponent();
+    await submitQuickSetupInput();
+    await waitFor(() => {
+      expect(closeModal).toHaveBeenCalled();
+    });
   });
 
   it('keeps modal open on unsuccessful quick setup', async function () {
-    const wrapper = createWrapper(400);
-    await submitQuickSetupInput(wrapper);
+    renderComponent(400);
+    await submitQuickSetupInput();
+    await waitFor(() => {
+      expect(screen.getByText(/Something went wrong/)).toBeInTheDocument();
+    });
     expect(closeModal).not.toHaveBeenCalled();
   });
 });

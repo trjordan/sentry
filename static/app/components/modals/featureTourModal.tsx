@@ -170,7 +170,7 @@ class ModalContents extends React.Component<ContentsProps, ContentsState> {
             {step.actions && step.actions}
             {hasNext && (
               <Button
-                data-test-id="next-step"
+                data-testid="next-step"
                 priority="primary"
                 onClick={this.handleAdvance}
               >
@@ -181,7 +181,7 @@ class ModalContents extends React.Component<ContentsProps, ContentsState> {
               <Button
                 external
                 href={doneUrl}
-                data-test-id="complete-tour"
+                data-testid="complete-tour"
                 onClick={closeModal}
                 priority="primary"
               >

@@ -1,7 +1,11 @@
 import React from 'react';
-import PropTypes from 'prop-types';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'app/api';
 import AccountSubscriptions from 'app/views/settings/account/accountSubscriptions';
@@ -13,24 +17,23 @@ describe('AccountSubscriptions', function () {
     Client.clearMockResponses();
   });
 
-  it('renders empty', function () {
+  it('renders empty', async function () {
     Client.addMockResponse({
       url: ENDPOINT,
       body: [],
     });
-    const wrapper = mountWithTheme(<AccountSubscriptions />, {
-      context: {
-        router: TestStubs.router(),
-      },
-      childContextTypes: {
-        router: PropTypes.object,
-      },
+    renderWithTheme(<AccountSubscriptions />, {
+      context: TestStubs.routerContext().context,
     });
 
-    expect(wrapper).toSnapshot();
+    await waitFor(() => {
+      expect(
+        screen.getByText(/There's no subscription backend present/i)
+      ).toBeInTheDocument();
+    });
   });
 
-  it('renders list and can toggle', function () {
+  it('renders list and can toggle', async function () {
     Client.addMockResponse({
       url: ENDPOINT,
       body: TestStubs.Subscriptions(),
@@ -40,20 +43,20 @@ describe('AccountSubscriptions', function () {
       method: 'PUT',
     });
 
-    const wrapper = mountWithTheme(<AccountSubscriptions />, {
-      context: {
-        router: TestStubs.router(),
-      },
-      childContextTypes: {
-        router: PropTypes.object,
-      },
+    renderWithTheme(<AccountSubscriptions />, {
+      context: TestStubs.routerContext().context,
     });
 
-    expect(wrapper).toSnapshot();
+    // Wait for subscriptions to load
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-indicator')).not.toBeInTheDocument();
+    });
 
     expect(mock).not.toHaveBeenCalled();
 
-    wrapper.find('Switch').first().simulate('click');
+    // Find the first switch and click it
+    const switches = screen.getAllByRole('checkbox');
+    await userEvent.click(switches[0]);
 
     expect(mock).toHaveBeenCalledWith(
       ENDPOINT,

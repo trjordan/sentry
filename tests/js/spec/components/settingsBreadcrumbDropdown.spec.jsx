@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {fireEvent, renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import BreadcrumbDropdown from 'app/views/settings/components/settingsBreadcrumb/breadcrumbDropdown';
 
@@ -9,81 +9,89 @@ jest.useFakeTimers();
 const CLOSE_DELAY = 0;
 
 describe('Settings Breadcrumb Dropdown', function () {
-  let wrapper;
   const selectMock = jest.fn();
   const items = [
     {value: '1', label: 'foo'},
     {value: '2', label: 'bar'},
   ];
+  const route = {name: 'Test', path: '/test'};
 
   beforeEach(function () {
-    wrapper = mountWithTheme(
-      <BreadcrumbDropdown items={items} name="Test" hasMenu onSelect={selectMock} />,
-      TestStubs.routerContext()
+    const router = TestStubs.router();
+    renderWithTheme(
+      <BreadcrumbDropdown
+        items={items}
+        name="Test"
+        hasMenu
+        onSelect={selectMock}
+        route={route}
+      />,
+      {context: {router}}
     );
   });
 
   it('opens when hovered over crumb', function () {
-    wrapper.find('Crumb').simulate('mouseEnter');
+    const crumb = screen.getByText('Test');
+    fireEvent.mouseEnter(crumb);
     jest.runAllTimers();
-    wrapper.update();
-    expect(wrapper.find('AutoCompleteItem')).toHaveLength(2);
+    expect(screen.getByText('foo')).toBeInTheDocument();
+    expect(screen.getByText('bar')).toBeInTheDocument();
   });
 
   it('closes after 200ms when mouse leaves crumb', function () {
-    wrapper.find('Crumb').simulate('mouseEnter');
+    const crumb = screen.getByText('Test');
+    fireEvent.mouseEnter(crumb);
     jest.runAllTimers();
-    wrapper.update();
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(1);
+    const menu = screen.getByTestId('autocomplete-list');
+    expect(menu).toBeInTheDocument();
 
-    wrapper.find('Crumb').simulate('mouseLeave');
+    fireEvent.mouseLeave(crumb);
     // wonder what happens when this arg is negative o_O
     jest.advanceTimersByTime(CLOSE_DELAY - 10);
-    wrapper.update();
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(1);
+    expect(screen.getByTestId('autocomplete-list')).toBeInTheDocument();
     jest.advanceTimersByTime(10);
-    wrapper.update();
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(0);
+    expect(screen.queryByTestId('autocomplete-list')).not.toBeInTheDocument();
   });
 
   it('closes immediately after selecting an item', function () {
-    wrapper.find('Crumb').simulate('mouseEnter');
+    const crumb = screen.getByText('Test');
+    fireEvent.mouseEnter(crumb);
     jest.runAllTimers();
-    wrapper.update();
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(1);
+    const menu = screen.getByTestId('autocomplete-list');
+    expect(menu).toBeInTheDocument();
 
-    wrapper.find('AutoCompleteItem').first().simulate('click');
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(0);
+    const item = screen.getByText('foo');
+    fireEvent.click(item);
+    expect(screen.queryByTestId('autocomplete-list')).not.toBeInTheDocument();
   });
 
   it('stays open when hovered over crumb and then into dropdown menu', function () {
-    wrapper.find('Crumb').simulate('mouseEnter');
+    const crumb = screen.getByText('Test');
+    fireEvent.mouseEnter(crumb);
     jest.runAllTimers();
-    wrapper.update();
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(1);
+    const menu = screen.getByTestId('autocomplete-list');
+    expect(menu).toBeInTheDocument();
 
-    wrapper.find('Crumb').simulate('mouseLeave');
-    wrapper.find('BubbleWithMinWidth').simulate('mouseEnter');
+    fireEvent.mouseLeave(crumb);
+    fireEvent.mouseEnter(menu);
     jest.runAllTimers();
-    wrapper.update();
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(1);
+    expect(screen.getByTestId('autocomplete-list')).toBeInTheDocument();
   });
 
   it('closes after entering dropdown and then leaving dropdown', function () {
-    wrapper.find('Crumb').simulate('mouseEnter');
+    const crumb = screen.getByText('Test');
+    fireEvent.mouseEnter(crumb);
     jest.runAllTimers();
-    wrapper.update();
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(1);
+    const menu = screen.getByTestId('autocomplete-list');
+    expect(menu).toBeInTheDocument();
 
-    wrapper.find('Crumb').simulate('mouseLeave');
-    wrapper.find('BubbleWithMinWidth').simulate('mouseEnter');
+    fireEvent.mouseLeave(crumb);
+    fireEvent.mouseEnter(menu);
     jest.runAllTimers();
-    wrapper.update();
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(1);
+    expect(screen.getByTestId('autocomplete-list')).toBeInTheDocument();
 
-    wrapper.find('BubbleWithMinWidth').simulate('mouseLeave');
+    fireEvent.mouseLeave(menu);
     jest.runAllTimers();
-    wrapper.update();
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(0);
+    expect(screen.queryByTestId('autocomplete-list')).not.toBeInTheDocument();
   });
 });

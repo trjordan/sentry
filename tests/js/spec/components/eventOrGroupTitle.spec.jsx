@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import EventOrGroupTitle from 'app/components/eventOrGroupTitle';
 
@@ -15,7 +15,7 @@ describe('EventOrGroupTitle', function () {
   };
 
   it('renders with subtitle when `type = error`', function () {
-    const component = mountWithTheme(
+    const {container} = renderWithTheme(
       <EventOrGroupTitle
         data={{
           ...data,
@@ -26,11 +26,11 @@ describe('EventOrGroupTitle', function () {
       />
     );
 
-    expect(component).toSnapshot();
+    expect(container).toSnapshot();
   });
 
   it('renders with subtitle when `type = csp`', function () {
-    const component = mountWithTheme(
+    const {container} = renderWithTheme(
       <EventOrGroupTitle
         data={{
           ...data,
@@ -41,11 +41,11 @@ describe('EventOrGroupTitle', function () {
       />
     );
 
-    expect(component).toSnapshot();
+    expect(container).toSnapshot();
   });
 
   it('renders with no subtitle when `type = default`', function () {
-    const component = mountWithTheme(
+    const {container} = renderWithTheme(
       <EventOrGroupTitle
         data={{
           ...data,
@@ -58,16 +58,15 @@ describe('EventOrGroupTitle', function () {
       />
     );
 
-    expect(component).toSnapshot();
+    expect(container).toSnapshot();
   });
 
   it('renders with title override', function () {
-    const routerContext = TestStubs.routerContext([
-      {organization: TestStubs.Organization({features: ['custom-event-title']})},
-    ]);
+    const organization = TestStubs.Organization({features: ['custom-event-title']});
 
-    const component = mountWithTheme(
+    renderWithTheme(
       <EventOrGroupTitle
+        organization={organization}
         data={{
           ...data,
           type: 'error',
@@ -76,10 +75,9 @@ describe('EventOrGroupTitle', function () {
             title: 'metadata title',
           },
         }}
-      />,
-      routerContext
+      />
     );
 
-    expect(component.text()).toContain('metadata title');
+    expect(screen.getByText(/metadata title/i)).toBeInTheDocument();
   });
 });

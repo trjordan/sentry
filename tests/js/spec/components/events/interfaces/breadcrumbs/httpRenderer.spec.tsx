@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render} from 'sentry-test/reactTestingLibrary';
 
 import HttpRenderer from 'app/components/events/interfaces/breadcrumbs/data/http';
 import {BreadcrumbLevelType, BreadcrumbType} from 'app/types/breadcrumbs';
@@ -8,7 +8,7 @@ import {BreadcrumbLevelType, BreadcrumbType} from 'app/types/breadcrumbs';
 describe('HttpRenderer', () => {
   describe('render', () => {
     it('should work', () => {
-      const httpRendererWrapper = mountWithTheme(
+      const {container} = render(
         <HttpRenderer
           searchTerm=""
           breadcrumb={{
@@ -24,26 +24,26 @@ describe('HttpRenderer', () => {
         />
       );
 
-      const annotatedTexts = httpRendererWrapper.find('AnnotatedText');
+      // Check for the method (POST)
+      const methodElement = container.querySelector('strong');
+      expect(methodElement).toHaveTextContent('POST');
 
-      expect(annotatedTexts.length).toEqual(3);
+      // Check for the URL link
+      const linkElement = container.querySelector(
+        'a[data-test-id="http-renderer-external-link"]'
+      );
+      expect(linkElement).toHaveTextContent('http://example.com/foo');
+      expect(linkElement).toHaveAttribute('href', 'http://example.com/foo');
 
-      expect(annotatedTexts.at(0).find('strong').text()).toEqual('POST ');
-
-      expect(
-        annotatedTexts.at(1).find('a[data-test-id="http-renderer-external-link"]').text()
-      ).toEqual('http://example.com/foo');
-
-      expect(
-        annotatedTexts
-          .at(2)
-          .find('Highlight[data-test-id="http-renderer-status-code"]')
-          .text()
-      ).toEqual(' [0]');
+      // Check for the status code
+      const statusCodeElement = container.querySelector(
+        '[data-test-id="http-renderer-status-code"]'
+      );
+      expect(statusCodeElement).toHaveTextContent('[0]');
     });
 
     it("shouldn't blow up if crumb.data is missing", () => {
-      const httpRendererWrapper = mountWithTheme(
+      const {container} = render(
         <HttpRenderer
           searchTerm=""
           breadcrumb={{
@@ -54,13 +54,20 @@ describe('HttpRenderer', () => {
         />
       );
 
-      const annotatedTexts = httpRendererWrapper.find('AnnotatedText');
+      // Should render without crashing but with no content
+      const strongElement = container.querySelector('strong');
+      expect(strongElement).not.toBeInTheDocument();
 
-      expect(annotatedTexts.length).toEqual(0);
+      expect(
+        container.querySelector('[data-test-id="http-renderer-external-link"]')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('[data-test-id="http-renderer-status-code"]')
+      ).not.toBeInTheDocument();
     });
 
     it("shouldn't blow up if url is not a string", () => {
-      const httpRendererWrapper = mountWithTheme(
+      const {container} = render(
         <HttpRenderer
           searchTerm=""
           breadcrumb={{
@@ -74,9 +81,16 @@ describe('HttpRenderer', () => {
         />
       );
 
-      const annotatedTexts = httpRendererWrapper.find('AnnotatedText');
+      // Should render method but no URL or status code
+      const methodElement = container.querySelector('strong');
+      expect(methodElement).toHaveTextContent('GET');
 
-      expect(annotatedTexts.length).toEqual(1);
+      expect(
+        container.querySelector('[data-test-id="http-renderer-external-link"]')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('[data-test-id="http-renderer-status-code"]')
+      ).not.toBeInTheDocument();
     });
   });
 });

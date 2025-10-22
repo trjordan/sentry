@@ -310,8 +310,9 @@ export default class IntegrationOrganizationLink extends AsyncView<Props, State>
           )}
         </p>
 
-        <Field label={t('Organization')} inline={false} stacked required>
+        <Field label={t('Organization')} inline={false} stacked required id="organization-select">
           <SelectControl
+            inputId="organization-select"
             onChange={this.onSelectOrg}
             value={selectedOrgSlug}
             placeholder={t('Select an organization')}

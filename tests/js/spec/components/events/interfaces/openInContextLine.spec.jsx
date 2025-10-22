@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import {OpenInContextLine} from 'app/components/events/interfaces/openInContextLine';
 import {addQueryParamsToExistingUrl} from 'app/utils/queryString';
@@ -45,13 +45,15 @@ describe('OpenInContextLine', function () {
 
   describe('with stacktrace-link component', function () {
     it('renders multiple buttons', function () {
-      const wrapper = mountWithTheme(
-        <OpenInContextLine filename={filename} lineNo={lineNo} components={components} />,
-        TestStubs.routerContext()
+      const {container} = renderWithTheme(
+        <OpenInContextLine filename={filename} lineNo={lineNo} components={components} />
       );
-      expect(wrapper.props().components[0].schema.url).toEqual(
+
+      // Verify the component data is correct
+      expect(components[0].schema.url).toEqual(
         `http://localhost:5000/redirection?installationId=${install.uuid}&projectSlug=${group.project.slug}`
       );
+
       const baseUrl = 'http://localhost:5000/redirection';
       const queryParams = {
         installationId: install.uuid,
@@ -60,14 +62,20 @@ describe('OpenInContextLine', function () {
         filename,
       };
       const url = addQueryParamsToExistingUrl(baseUrl, queryParams);
-      const stacktraceLinkFoo = wrapper.find(
-        'OpenInLink[data-test-id="stacktrace-link-foo"]'
+
+      // Query the links by data-test-id
+      const stacktraceLinkFoo = container.querySelector(
+        '[data-test-id="stacktrace-link-foo"]'
       );
-      expect(stacktraceLinkFoo.prop('href')).toEqual(url);
-      expect(stacktraceLinkFoo.text()).toEqual('Foo');
-      expect(
-        wrapper.find('OpenInLink[data-test-id="stacktrace-link-tesla"]').text()
-      ).toEqual('Tesla');
+      expect(stacktraceLinkFoo).toBeInTheDocument();
+      expect(stacktraceLinkFoo?.getAttribute('href')).toEqual(url);
+      expect(stacktraceLinkFoo?.textContent).toEqual('Foo');
+
+      const stacktraceLinkTesla = container.querySelector(
+        '[data-test-id="stacktrace-link-tesla"]'
+      );
+      expect(stacktraceLinkTesla).toBeInTheDocument();
+      expect(stacktraceLinkTesla?.textContent).toEqual('Tesla');
     });
   });
 });

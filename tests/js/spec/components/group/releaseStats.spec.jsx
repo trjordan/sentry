@@ -1,7 +1,7 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import GroupReleaseStats from 'app/components/group/releaseStats';
 import ConfigStore from 'app/stores/configStore';
@@ -21,7 +21,7 @@ describe('GroupReleaseStats', function () {
   });
 
   const createWrapper = props =>
-    mountWithTheme(
+    renderWithTheme(
       <GroupReleaseStats
         group={TestStubs.Group()}
         project={project}
@@ -30,22 +30,26 @@ describe('GroupReleaseStats', function () {
         environments={[]}
         {...props}
       />,
-      routerContext
+      {context: routerContext[0]}
     );
 
   it('renders all environments', function () {
-    const wrapper = createWrapper();
-    expect(wrapper.find('[data-test-id="env-label"]').text()).toBe('All Environments');
-    expect(wrapper.find('GroupReleaseChart')).toHaveLength(2);
-    expect(wrapper.find('SeenInfo')).toHaveLength(2);
+    const {container} = createWrapper();
+    expect(screen.getByTestId('env-label')).toHaveTextContent('All Environments');
+    expect(
+      container.querySelectorAll('[data-test-id="group-release-chart"]')
+    ).toHaveLength(2);
+    expect(container.querySelectorAll('[data-test-id="seen-info"]')).toHaveLength(2);
   });
 
   it('renders specific environments', function () {
-    const wrapper = createWrapper({environments: TestStubs.Environments()});
-    expect(wrapper.find('[data-test-id="env-label"]').text()).toBe(
+    const {container} = createWrapper({environments: TestStubs.Environments()});
+    expect(screen.getByTestId('env-label')).toHaveTextContent(
       'Production, Staging, STAGING'
     );
-    expect(wrapper.find('GroupReleaseChart')).toHaveLength(2);
-    expect(wrapper.find('SeenInfo')).toHaveLength(2);
+    expect(
+      container.querySelectorAll('[data-test-id="group-release-chart"]')
+    ).toHaveLength(2);
+    expect(container.querySelectorAll('[data-test-id="seen-info"]')).toHaveLength(2);
   });
 });

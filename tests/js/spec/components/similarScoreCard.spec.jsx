@@ -1,21 +1,18 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import SimilarScoreCard from 'app/components/similarScoreCard';
 
 describe('SimilarScoreCard', function () {
-  beforeEach(function () {});
-
-  afterEach(function () {});
-
   it('renders', function () {
-    const wrapper = mountWithTheme(<SimilarScoreCard />);
-    expect(wrapper).toSnapshot();
+    const {container} = renderWithTheme(<SimilarScoreCard />);
+    // Component returns null when scoreList is empty
+    expect(container.firstChild).toBeNull();
   });
 
   it('renders with score list', function () {
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <SimilarScoreCard
         scoreList={[
           ['exception:message:character-shingles', null],
@@ -26,6 +23,12 @@ describe('SimilarScoreCard', function () {
         ]}
       />
     );
-    expect(wrapper).toSnapshot();
+
+    // Check that the score labels are rendered correctly
+    expect(screen.getByText('Exception Message')).toBeInTheDocument();
+    expect(screen.getByText('In-App Frames')).toBeInTheDocument();
+    expect(screen.getByText('Stack Trace Frames')).toBeInTheDocument();
+    expect(screen.getByText('Log Message')).toBeInTheDocument();
+    expect(screen.getByText('Other')).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import {doEventsRequest} from 'app/actionCreators/events';
 import EventsRequest from 'app/components/charts/eventsRequest';
@@ -28,7 +28,7 @@ describe('EventsRequest', function () {
     includeTimeseries: true,
   };
 
-  let wrapper;
+  let rerender;
 
   describe('with props changes', function () {
     beforeAll(function () {
@@ -37,7 +37,8 @@ describe('EventsRequest', function () {
           data: [[new Date(), [COUNT_OBJ]]],
         })
       );
-      wrapper = mountWithTheme(<EventsRequest {...DEFAULTS}>{mock}</EventsRequest>);
+      const result = renderWithTheme(<EventsRequest {...DEFAULTS}>{mock}</EventsRequest>);
+      rerender = result.rerender;
     });
 
     it('makes requests', async function () {
@@ -48,6 +49,7 @@ describe('EventsRequest', function () {
         })
       );
 
+      await tick();
       expect(mock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           loading: false,
@@ -72,9 +74,12 @@ describe('EventsRequest', function () {
     it('makes a new request if projects prop changes', async function () {
       doEventsRequest.mockClear();
 
-      wrapper.setProps({projects: [123]});
+      rerender(
+        <EventsRequest {...DEFAULTS} projects={[123]}>
+          {mock}
+        </EventsRequest>
+      );
       await tick();
-      wrapper.update();
       expect(doEventsRequest).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
@@ -86,9 +91,12 @@ describe('EventsRequest', function () {
     it('makes a new request if environments prop changes', async function () {
       doEventsRequest.mockClear();
 
-      wrapper.setProps({environments: ['dev']});
+      rerender(
+        <EventsRequest {...DEFAULTS} environments={['dev']}>
+          {mock}
+        </EventsRequest>
+      );
       await tick();
-      wrapper.update();
       expect(doEventsRequest).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
@@ -100,9 +108,12 @@ describe('EventsRequest', function () {
     it('makes a new request if period prop changes', async function () {
       doEventsRequest.mockClear();
 
-      wrapper.setProps({period: '7d'});
+      rerender(
+        <EventsRequest {...DEFAULTS} period="7d">
+          {mock}
+        </EventsRequest>
+      );
       await tick();
-      wrapper.update();
       expect(doEventsRequest).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
@@ -132,15 +143,13 @@ describe('EventsRequest', function () {
           ],
         })
       );
-      wrapper = mountWithTheme(
+      renderWithTheme(
         <EventsRequest {...DEFAULTS} includePrevious>
           {mock}
         </EventsRequest>
       );
 
       await tick();
-      wrapper.update();
-
       // actionCreator handles expanding the period when calling the API
       expect(doEventsRequest).toHaveBeenCalledWith(
         expect.anything(),
@@ -207,28 +216,31 @@ describe('EventsRequest', function () {
         })
       );
 
-      wrapper = mountWithTheme(
+      const {rerender: rerenderLocal} = renderWithTheme(
         <EventsRequest {...DEFAULTS} includeTimeseries>
           {mock}
         </EventsRequest>
       );
 
       await tick();
-      wrapper.update();
-
       expect(mock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           timeAggregatedData: {},
         })
       );
 
-      wrapper.setProps({
-        includeTimeAggregation: true,
-        timeAggregationSeriesName: 'aggregated series',
-      });
-      await tick();
-      wrapper.update();
+      rerenderLocal(
+        <EventsRequest
+          {...DEFAULTS}
+          includeTimeseries
+          includeTimeAggregation
+          timeAggregationSeriesName="aggregated series"
+        >
+          {mock}
+        </EventsRequest>
+      );
 
+      await tick();
       expect(mock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           timeAggregatedData: {
@@ -246,28 +258,31 @@ describe('EventsRequest', function () {
         })
       );
 
-      wrapper = mountWithTheme(
+      const {rerender: rerenderLocal2} = renderWithTheme(
         <EventsRequest {...DEFAULTS} includeTimeseries>
           {mock}
         </EventsRequest>
       );
 
       await tick();
-      wrapper.update();
-
       expect(mock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           timeAggregatedData: {},
         })
       );
 
-      wrapper.setProps({
-        includeTimeAggregation: true,
-        timeAggregationSeriesName: 'aggregated series',
-      });
-      await tick();
-      wrapper.update();
+      rerenderLocal2(
+        <EventsRequest
+          {...DEFAULTS}
+          includeTimeseries
+          includeTimeAggregation
+          timeAggregationSeriesName="aggregated series"
+        >
+          {mock}
+        </EventsRequest>
+      );
 
+      await tick();
       expect(mock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           timeAggregatedData: {
@@ -300,15 +315,13 @@ describe('EventsRequest', function () {
         })
       );
 
-      wrapper = mountWithTheme(
+      renderWithTheme(
         <EventsRequest {...DEFAULTS} includePrevious yAxis="apdex()">
           {mock}
         </EventsRequest>
       );
 
       await tick();
-      wrapper.update();
-
       expect(mock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           loading: false,
@@ -390,15 +403,13 @@ describe('EventsRequest', function () {
         })
       );
 
-      wrapper = mountWithTheme(
+      renderWithTheme(
         <EventsRequest {...DEFAULTS} includePrevious yAxis={['apdex()', 'epm()']}>
           {mock}
         </EventsRequest>
       );
 
       await tick();
-      wrapper.update();
-
       const generateExpected = name => {
         return {
           seriesName: name,
@@ -454,7 +465,7 @@ describe('EventsRequest', function () {
         })
       );
 
-      wrapper = mountWithTheme(
+      renderWithTheme(
         <EventsRequest
           {...DEFAULTS}
           includePrevious
@@ -466,8 +477,6 @@ describe('EventsRequest', function () {
       );
 
       await tick();
-      wrapper.update();
-
       const generateExpected = name => {
         return {
           seriesName: name,
@@ -497,7 +506,7 @@ describe('EventsRequest', function () {
     });
 
     it('does not make request', async function () {
-      wrapper = mountWithTheme(
+      renderWithTheme(
         <EventsRequest {...DEFAULTS} expired>
           {mock}
         </EventsRequest>
@@ -506,7 +515,7 @@ describe('EventsRequest', function () {
     });
 
     it('errors', async function () {
-      wrapper = mountWithTheme(
+      renderWithTheme(
         <EventsRequest {...DEFAULTS} expired>
           {mock}
         </EventsRequest>

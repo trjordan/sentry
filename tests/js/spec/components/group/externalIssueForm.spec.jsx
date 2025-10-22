@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import ExternalIssueForm from 'app/components/group/externalIssueForm';
 
@@ -22,19 +22,22 @@ jest.mock('lodash/debounce', () => {
 });
 
 describe('ExternalIssueForm', () => {
-  let group, integration, onChange, wrapper, formConfig;
+  let group, integration, onChange, formConfig;
+  let componentRef;
+
   beforeEach(() => {
     MockApiClient.clearMockResponses();
     group = TestStubs.Group();
     integration = TestStubs.GitHubIntegration({externalIssues: []});
     onChange = jest.fn();
+    componentRef = React.createRef();
   });
 
   afterEach(() => {
     jest.useRealTimers();
   });
 
-  const generateWrapper = (action = 'create') => {
+  const generateWrapper = async (action = 'create') => {
     MockApiClient.addMockResponse(
       {
         url: `/groups/${group.id}/integrations/${integration.id}/`,
@@ -44,18 +47,29 @@ describe('ExternalIssueForm', () => {
         predicate: (_, options) => options?.query?.action === 'create',
       }
     );
-    const component = mountWithTheme(
+    const result = renderWithTheme(
       <ExternalIssueForm
+        ref={componentRef}
         Body={p => p.children}
         Header={p => p.children}
         group={group}
         integration={integration}
         onChange={onChange}
-      />,
-      TestStubs.routerContext()
+      />
     );
-    component.instance().handleClick(action);
-    return component;
+
+    // Trigger the action by calling handleClick directly
+    if (componentRef.current) {
+      componentRef.current.handleClick(action);
+    }
+
+    // Wait for async operations to complete
+    await waitFor(() => {
+      // Check that the component has loaded the form config
+      expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+    });
+
+    return result;
   };
 
   describe('create', () => {
@@ -69,9 +83,13 @@ describe('ExternalIssueForm', () => {
         body: formConfig,
       });
     });
-    it('renders', () => {
-      wrapper = generateWrapper();
-      expect(wrapper).toSnapshot();
+
+    it('renders', async () => {
+      await generateWrapper();
+
+      // Verify the form renders with Create tab active
+      expect(screen.getByText('Create')).toBeInTheDocument();
+      expect(screen.getByText('Link')).toBeInTheDocument();
     });
   });
   describe('link', () => {
@@ -146,18 +164,26 @@ describe('ExternalIssueForm', () => {
         }
       );
     });
-    it('renders', () => {
-      wrapper = generateWrapper('link');
-      expect(wrapper).toSnapshot();
+
+    it('renders', async () => {
+      await generateWrapper('link');
+
+      // Verify the form renders with fields from the config
+      expect(screen.getByText('GitHub Repository')).toBeInTheDocument();
+      expect(screen.getByText('Comment')).toBeInTheDocument();
     });
+
     it('load options', async () => {
-      wrapper = generateWrapper('link');
-      await tick();
-      wrapper.update();
-      expect(getFormConfigRequest).toHaveBeenCalled();
+      await generateWrapper('link');
+
+      // Wait for the API call to complete
+      await waitFor(() => {
+        expect(getFormConfigRequest).toHaveBeenCalled();
+      });
     });
     describe('options loaded', () => {
       let mockSuccessResponse;
+
       beforeEach(async () => {
         mockSuccessResponse = [42, 56];
 
@@ -177,9 +203,8 @@ describe('ExternalIssueForm', () => {
           url: `/groups/${group.id}/integrations/${integration.id}/?action=link`,
           body: formConfig,
         });
-        wrapper = generateWrapper('link');
-        await tick();
-        wrapper.update();
+
+        await generateWrapper('link');
       });
 
       afterEach(() => {
@@ -189,11 +214,19 @@ describe('ExternalIssueForm', () => {
 
       it('fast typing is debounced and uses trailing call when fetching data', () => {
         jest.useFakeTimers();
-        wrapper.instance().getOptions(externalIssueField, 'd');
-        wrapper.instance().getOptions(externalIssueField, 'do');
-        wrapper.instance().getOptions(externalIssueField, 'doo');
-        wrapper.instance().getOptions(externalIssueField, 'doOT');
+
+        // Call getOptions multiple times to simulate fast typing
+        if (componentRef.current) {
+          componentRef.current.getOptions(externalIssueField, 'd');
+          componentRef.current.getOptions(externalIssueField, 'do');
+          componentRef.current.getOptions(externalIssueField, 'doo');
+          componentRef.current.getOptions(externalIssueField, 'doOT');
+        }
+
+        // No fetch should happen yet due to debouncing
         expect(window.fetch).toHaveBeenCalledTimes(0);
+
+        // After advancing past the debounce timeout, only one fetch should occur
         jest.advanceTimersByTime(300);
         expect(window.fetch).toHaveBeenCalledTimes(1);
         expect(window.fetch).toHaveBeenCalledWith(
@@ -202,7 +235,11 @@ describe('ExternalIssueForm', () => {
       });
 
       it('debounced function returns a promise with the options returned by fetch', async () => {
-        const output = await wrapper.instance().getOptions(externalIssueField, 'd');
+        if (!componentRef.current) {
+          throw new Error('Component ref not available');
+        }
+
+        const output = await componentRef.current.getOptions(externalIssueField, 'd');
         expect(output).toEqual(mockSuccessResponse);
       });
     });

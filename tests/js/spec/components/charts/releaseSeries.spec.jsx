@@ -1,17 +1,18 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import ReleaseSeries from 'app/components/charts/releaseSeries';
 
 describe('ReleaseSeries', function () {
   const renderFunc = jest.fn(() => null);
-  const {routerContext, organization} = initializeOrg();
+  const {organization, router} = initializeOrg();
   let releases;
   let releasesMock;
 
   beforeEach(function () {
+    renderFunc.mockClear();
     releases = [
       {
         version: 'sentry-android-shop@1.2.0',
@@ -25,29 +26,24 @@ describe('ReleaseSeries', function () {
     });
   });
 
-  it('does not fetch releases if releases is truthy', async function () {
-    const wrapper = mountWithTheme(
-      <ReleaseSeries organization={organization} releases={[]}>
+  it('does not fetch releases if releases is truthy', function () {
+    renderWithTheme(
+      <ReleaseSeries organization={organization} router={router} releases={[]}>
         {renderFunc}
-      </ReleaseSeries>,
-      routerContext
+      </ReleaseSeries>
     );
-
-    await tick();
-    wrapper.update();
 
     expect(releasesMock).not.toHaveBeenCalled();
   });
 
   it('fetches releases if no releases passed through props', async function () {
-    const wrapper = mountWithTheme(
-      <ReleaseSeries>{renderFunc}</ReleaseSeries>,
-      routerContext
+    renderWithTheme(
+      <ReleaseSeries organization={organization} router={router}>
+        {renderFunc}
+      </ReleaseSeries>
     );
 
     await tick();
-    wrapper.update();
-
     expect(releasesMock).toHaveBeenCalled();
 
     expect(renderFunc).toHaveBeenCalledWith(
@@ -58,14 +54,13 @@ describe('ReleaseSeries', function () {
   });
 
   it('fetches releases with project conditions', async function () {
-    const wrapper = mountWithTheme(
-      <ReleaseSeries projects={[1, 2]}>{renderFunc}</ReleaseSeries>,
-      routerContext
+    renderWithTheme(
+      <ReleaseSeries organization={organization} router={router} projects={[1, 2]}>
+        {renderFunc}
+      </ReleaseSeries>
     );
 
     await tick();
-    wrapper.update();
-
     expect(releasesMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -75,14 +70,17 @@ describe('ReleaseSeries', function () {
   });
 
   it('fetches releases with environment conditions', async function () {
-    const wrapper = mountWithTheme(
-      <ReleaseSeries environments={['dev', 'test']}>{renderFunc}</ReleaseSeries>,
-      routerContext
+    renderWithTheme(
+      <ReleaseSeries
+        organization={organization}
+        router={router}
+        environments={['dev', 'test']}
+      >
+        {renderFunc}
+      </ReleaseSeries>
     );
 
     await tick();
-    wrapper.update();
-
     expect(releasesMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -92,16 +90,18 @@ describe('ReleaseSeries', function () {
   });
 
   it('fetches releases with start and end date strings', async function () {
-    const wrapper = mountWithTheme(
-      <ReleaseSeries start="2020-01-01" end="2020-01-31">
+    renderWithTheme(
+      <ReleaseSeries
+        organization={organization}
+        router={router}
+        start="2020-01-01"
+        end="2020-01-31"
+      >
         {renderFunc}
-      </ReleaseSeries>,
-      routerContext
+      </ReleaseSeries>
     );
 
     await tick();
-    wrapper.update();
-
     expect(releasesMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -113,16 +113,13 @@ describe('ReleaseSeries', function () {
   it('fetches releases with start and end dates', async function () {
     const start = new Date(Date.UTC(2020, 0, 1, 12, 13, 14));
     const end = new Date(Date.UTC(2020, 0, 31, 14, 15, 16));
-    const wrapper = mountWithTheme(
-      <ReleaseSeries start={start} end={end}>
+    renderWithTheme(
+      <ReleaseSeries organization={organization} router={router} start={start} end={end}>
         {renderFunc}
-      </ReleaseSeries>,
-      routerContext
+      </ReleaseSeries>
     );
 
     await tick();
-    wrapper.update();
-
     expect(releasesMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -132,14 +129,13 @@ describe('ReleaseSeries', function () {
   });
 
   it('fetches releases with period', async function () {
-    const wrapper = mountWithTheme(
-      <ReleaseSeries period="14d">{renderFunc}</ReleaseSeries>,
-      routerContext
+    renderWithTheme(
+      <ReleaseSeries organization={organization} router={router} period="14d">
+        {renderFunc}
+      </ReleaseSeries>
     );
 
     await tick();
-    wrapper.update();
-
     expect(releasesMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -149,12 +145,14 @@ describe('ReleaseSeries', function () {
   });
 
   it('fetches on property updates', async function () {
-    const wrapper = mountWithTheme(
-      <ReleaseSeries period="14d">{renderFunc}</ReleaseSeries>,
-      routerContext
+    const {rerender} = renderWithTheme(
+      <ReleaseSeries organization={organization} router={router} period="14d">
+        {renderFunc}
+      </ReleaseSeries>
     );
+
     await tick();
-    wrapper.update();
+    expect(releasesMock).toHaveBeenCalled();
 
     const cases = [
       {period: '7d'},
@@ -164,10 +162,13 @@ describe('ReleaseSeries', function () {
     for (const scenario of cases) {
       releasesMock.mockReset();
 
-      wrapper.setProps(scenario);
-      wrapper.update();
-      await tick();
+      rerender(
+        <ReleaseSeries organization={organization} router={router} {...scenario}>
+          {renderFunc}
+        </ReleaseSeries>
+      );
 
+      await tick();
       expect(releasesMock).toHaveBeenCalled();
     }
   });
@@ -175,40 +176,57 @@ describe('ReleaseSeries', function () {
   it('doesnt not refetch releases with memoize enabled', async function () {
     const originalPeriod = '14d';
     const updatedPeriod = '7d';
-    const wrapper = mountWithTheme(
-      <ReleaseSeries period={originalPeriod} memoized>
+    const {rerender} = renderWithTheme(
+      <ReleaseSeries
+        organization={organization}
+        router={router}
+        period={originalPeriod}
+        memoized
+      >
         {renderFunc}
-      </ReleaseSeries>,
-      routerContext
+      </ReleaseSeries>
     );
 
     await tick();
-    wrapper.update();
-
     expect(releasesMock).toHaveBeenCalledTimes(1);
 
-    wrapper.setProps({period: updatedPeriod});
-    wrapper.update();
-    await tick();
+    rerender(
+      <ReleaseSeries
+        organization={organization}
+        router={router}
+        period={updatedPeriod}
+        memoized
+      >
+        {renderFunc}
+      </ReleaseSeries>
+    );
 
+    await tick();
     expect(releasesMock).toHaveBeenCalledTimes(2);
 
-    wrapper.setProps({period: originalPeriod});
-    wrapper.update();
-    await tick();
+    rerender(
+      <ReleaseSeries
+        organization={organization}
+        router={router}
+        period={originalPeriod}
+        memoized
+      >
+        {renderFunc}
+      </ReleaseSeries>
+    );
 
+    await tick();
     expect(releasesMock).toHaveBeenCalledTimes(2);
   });
 
   it('generates an eCharts `markLine` series from releases', async function () {
-    const wrapper = mountWithTheme(
-      <ReleaseSeries>{renderFunc}</ReleaseSeries>,
-      routerContext
+    renderWithTheme(
+      <ReleaseSeries organization={organization} router={router}>
+        {renderFunc}
+      </ReleaseSeries>
     );
 
     await tick();
-    wrapper.update();
-
     expect(renderFunc).toHaveBeenCalledWith(
       expect.objectContaining({
         releaseSeries: [
@@ -234,16 +252,17 @@ describe('ReleaseSeries', function () {
       version: 'sentry-android-shop@1.2.1',
       date: '2020-03-24T00:00:00Z',
     });
-    const wrapper = mountWithTheme(
-      <ReleaseSeries emphasizeReleases={['sentry-android-shop@1.2.0']}>
+    const {rerender} = renderWithTheme(
+      <ReleaseSeries
+        organization={organization}
+        router={router}
+        emphasizeReleases={['sentry-android-shop@1.2.0']}
+      >
         {renderFunc}
-      </ReleaseSeries>,
-      routerContext
+      </ReleaseSeries>
     );
 
     await tick();
-    wrapper.update();
-
     expect(renderFunc).toHaveBeenCalledWith(
       expect.objectContaining({
         releaseSeries: [
@@ -279,12 +298,17 @@ describe('ReleaseSeries', function () {
       })
     );
 
-    wrapper.setProps({
-      emphasizedReleases: ['sentry-android-shop@1.2.1'],
-    });
-    await tick();
-    wrapper.update();
+    rerender(
+      <ReleaseSeries
+        organization={organization}
+        router={router}
+        emphasizeReleases={['sentry-android-shop@1.2.1']}
+      >
+        {renderFunc}
+      </ReleaseSeries>
+    );
 
+    await tick();
     expect(renderFunc).toHaveBeenCalledWith(
       expect.objectContaining({
         releaseSeries: [

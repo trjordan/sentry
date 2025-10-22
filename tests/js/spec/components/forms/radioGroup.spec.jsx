@@ -1,13 +1,13 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import RadioGroup from 'app/views/settings/components/forms/controls/radioGroup';
 
 describe('RadioGroup', function () {
   it('renders', function () {
     const mock = jest.fn();
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <RadioGroup
         name="radio"
         label="test"
@@ -20,12 +20,12 @@ describe('RadioGroup', function () {
         onChange={mock}
       />
     );
-    expect(wrapper).toSnapshot();
+    expect(container).toSnapshot();
   });
 
   it('renders disabled', function () {
     const mock = jest.fn();
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <RadioGroup
         name="radio"
         label="test"
@@ -35,15 +35,15 @@ describe('RadioGroup', function () {
         onChange={mock}
       />
     );
-    expect(wrapper).toSnapshot();
+    expect(container).toSnapshot();
 
-    expect(wrapper.find('RadioLineText').props().disabled).toBe(true);
-    expect(wrapper.find('Radio').props().disabled).toBe(true);
+    const radioInput = container.querySelector('input[type="radio"]');
+    expect(radioInput).toBeDisabled();
   });
 
   it('can select a different item', function () {
     const mock = jest.fn();
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <RadioGroup
         name="radio"
         label="test"
@@ -56,13 +56,13 @@ describe('RadioGroup', function () {
         onChange={mock}
       />
     );
-    expect(wrapper).toSnapshot();
+    expect(container).toSnapshot();
   });
 
-  it('calls onChange when clicked', function () {
+  it('calls onChange when clicked', async function () {
     const mock = jest.fn();
 
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <RadioGroup
         name="radio"
         label="test"
@@ -75,7 +75,9 @@ describe('RadioGroup', function () {
         onChange={mock}
       />
     );
-    wrapper.find('[role="radio"] Radio').last().simulate('change');
+
+    const radioInputs = container.querySelectorAll('input[type="radio"]');
+    await userEvent.click(radioInputs[2]);
     expect(mock).toHaveBeenCalledWith(expect.any(String), expect.any(Object));
   });
 });

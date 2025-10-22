@@ -1,7 +1,11 @@
 import React from 'react';
 
-import changeReactMentionsInput from 'sentry-test/changeReactMentionsInput';
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  changeReactMentionsInput,
+  fireEvent,
+  renderWithTheme,
+  screen,
+} from 'sentry-test/reactTestingLibrary';
 
 import NoteInputWithStorage from 'app/components/activity/note/inputWithStorage';
 import localStorage from 'app/utils/localStorage';
@@ -16,29 +20,37 @@ describe('NoteInputWithStorage', function () {
     memberList: [],
     teams: [],
   };
-  const routerContext = TestStubs.routerContext();
 
-  const createWrapper = props =>
-    mountWithTheme(<NoteInputWithStorage {...defaultProps} {...props} />, routerContext);
+  beforeEach(function () {
+    localStorage.getItem.mockClear();
+    localStorage.setItem.mockClear();
+    localStorage.getItem.mockReturnValue(null);
+  });
 
   it('loads draft item from local storage when mounting', function () {
     localStorage.getItem.mockImplementation(() => JSON.stringify({item1: 'saved item'}));
 
-    const wrapper = createWrapper();
+    renderWithTheme(<NoteInputWithStorage {...defaultProps} />);
 
     expect(localStorage.getItem).toHaveBeenCalledWith('storage');
-    expect(wrapper.find('textarea').prop('value')).toBe('saved item');
+    expect(screen.getByRole('textbox')).toHaveValue('saved item');
   });
 
   it('saves draft when input changes', function () {
-    const wrapper = createWrapper();
+    jest.useFakeTimers();
+    renderWithTheme(<NoteInputWithStorage {...defaultProps} />);
 
-    changeReactMentionsInput(wrapper, 'WIP COMMENT');
+    changeReactMentionsInput('WIP COMMENT');
+
+    // Advance timers to trigger the debounced save (150ms debounce)
+    jest.advanceTimersByTime(150);
 
     expect(localStorage.setItem).toHaveBeenCalledWith(
       'storage',
       JSON.stringify({item1: 'WIP COMMENT'})
     );
+
+    jest.useRealTimers();
   });
 
   it('removes draft item after submitting', function () {
@@ -46,11 +58,11 @@ describe('NoteInputWithStorage', function () {
       JSON.stringify({item1: 'draft item', item2: 'item2', item3: 'item3'})
     );
 
-    const wrapper = createWrapper();
+    renderWithTheme(<NoteInputWithStorage {...defaultProps} />);
 
-    changeReactMentionsInput(wrapper, 'new comment');
+    changeReactMentionsInput('new comment');
 
-    wrapper.find('textarea').simulate('keyDown', {key: 'Enter', ctrlKey: true});
+    fireEvent.keyDown(screen.getByRole('textbox'), {key: 'Enter', ctrlKey: true});
     expect(localStorage.setItem).toHaveBeenLastCalledWith(
       'storage',
       JSON.stringify({item2: 'item2', item3: 'item3'})

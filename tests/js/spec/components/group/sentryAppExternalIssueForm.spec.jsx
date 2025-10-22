@@ -1,16 +1,19 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {changeInputValue, selectByValue} from 'sentry-test/select-new';
+import {
+  fireEvent,
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'app/api';
 import SentryAppExternalIssueForm from 'app/components/group/sentryAppExternalIssueForm';
 import {addQueryParamsToExistingUrl} from 'app/utils/queryString';
 
-const optionLabelSelector = label => `[label="${label}"]`;
-
 describe('SentryAppExternalIssueForm', () => {
-  let wrapper;
   let group;
   let sentryApp;
   let sentryAppInstallation;
@@ -37,7 +40,7 @@ describe('SentryAppExternalIssueForm', () => {
 
   describe('create', () => {
     beforeEach(() => {
-      wrapper = mountWithTheme(
+      renderWithTheme(
         <SentryAppExternalIssueForm
           group={group}
           sentryAppInstallation={sentryAppInstallation}
@@ -45,62 +48,76 @@ describe('SentryAppExternalIssueForm', () => {
           config={component.schema.create}
           action="create"
           api={new Client()}
-        />,
-        TestStubs.routerContext()
+        />
       );
     });
 
     it('renders each required_fields field', () => {
       component.schema.create.required_fields.forEach(field => {
-        expect(wrapper.exists(`#${field.name}`)).toBe(true);
+        expect(screen.getByTestId(field.name)).toBeInTheDocument();
       });
     });
 
-    it('does not submit form if required fields are not set', () => {
-      wrapper.find('form').simulate('submit');
+    it('does not submit form if required fields are not set', async () => {
+      const submitButton = screen.getByRole('button', {name: /save changes/i});
+      await userEvent.click(submitButton);
       expect(externalIssueRequest).not.toHaveBeenCalled();
     });
 
-    it('submits to the New External Issue endpoint', () => {
-      selectByValue(wrapper, 'number_1', {name: 'numbers', control: true});
+    it('submits to the New External Issue endpoint', async () => {
+      // For synchronous selects, find and click the input to open dropdown
+      const numbersField = screen.getByTestId('numbers');
+      const selectInput = within(numbersField).getByRole('textbox');
 
-      wrapper.find('form').simulate('submit');
+      // Type a character to trigger the menu to open
+      await userEvent.type(selectInput, '{selectall}{backspace}o');
 
-      expect(externalIssueRequest).toHaveBeenCalledWith(
-        submitUrl,
-        expect.objectContaining({
-          data: {
-            action: 'create',
-            description:
-              'Sentry Issue: [SEN123](https://sentry.io/organizations/sentry/issues/123/?project=1&referrer=Sample%20App)',
-            groupId: '1',
-            numbers: 'number_1',
-            title: 'ApiError: Broken',
-          },
-          method: 'POST',
-        })
-      );
+      // Options should appear
+      await waitFor(() => {
+        expect(screen.getByText('one')).toBeInTheDocument();
+        expect(screen.getByText('two')).toBeInTheDocument();
+      });
+
+      // Click the option labeled "one" (which has value "number_1")
+      fireEvent.click(screen.getByText('one'));
+
+      const submitButton = screen.getByRole('button', {name: /save changes/i});
+      await userEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(externalIssueRequest).toHaveBeenCalledWith(
+          submitUrl,
+          expect.objectContaining({
+            data: {
+              action: 'create',
+              description:
+                'Sentry Issue: [SEN123](https://sentry.io/organizations/sentry/issues/123/?project=1&referrer=Sample%20App)',
+              groupId: '1',
+              numbers: 'number_1',
+              title: 'ApiError: Broken',
+            },
+            method: 'POST',
+          })
+        );
+      });
     });
 
     it('renders prepopulated defaults', () => {
-      const titleField = wrapper.find('Input#title');
-      const descriptionField = wrapper.find('TextArea#description');
-
       const url = addQueryParamsToExistingUrl(group.permalink, {
         referrer: sentryApp.name,
       });
 
-      expect(titleField.prop('value')).toEqual(`${group.title}`);
+      const titleField = screen.getByRole('textbox', {name: /title/i});
+      const descriptionField = screen.getByRole('textbox', {name: /description/i});
 
-      expect(descriptionField.prop('value')).toEqual(
-        `Sentry Issue: [${group.shortId}](${url})`
-      );
+      expect(titleField).toHaveValue(`${group.title}`);
+      expect(descriptionField).toHaveValue(`Sentry Issue: [${group.shortId}](${url})`);
     });
   });
 
   describe('link', () => {
     beforeEach(() => {
-      wrapper = mountWithTheme(
+      renderWithTheme(
         <SentryAppExternalIssueForm
           group={group}
           sentryAppInstallation={sentryAppInstallation}
@@ -108,41 +125,41 @@ describe('SentryAppExternalIssueForm', () => {
           config={component.schema.link}
           action="link"
           api={new Client()}
-        />,
-        TestStubs.routerContext()
+        />
       );
     });
 
     it('renders each required_fields field', () => {
       component.schema.link.required_fields.forEach(field => {
-        expect(wrapper.exists(`#${field.name}`)).toBe(true);
+        expect(screen.getByTestId(field.name)).toBeInTheDocument();
       });
     });
 
-    it('submits to the New External Issue endpoint', () => {
-      wrapper
-        .find('input[name="issue"]')
-        .simulate('change', {target: {value: 'my issue'}});
+    it('submits to the New External Issue endpoint', async () => {
+      const issueInput = screen.getByRole('textbox', {name: /issue/i});
+      await userEvent.type(issueInput, 'my issue');
 
-      wrapper.find('form').simulate('submit');
+      const submitButton = screen.getByRole('button', {name: /save changes/i});
+      await userEvent.click(submitButton);
 
-      expect(externalIssueRequest).toHaveBeenCalledWith(
-        submitUrl,
-        expect.objectContaining({
-          data: {
-            action: 'link',
-            groupId: '1',
-            issue: 'my issue',
-          },
-          method: 'POST',
-        })
-      );
+      await waitFor(() => {
+        expect(externalIssueRequest).toHaveBeenCalledWith(
+          submitUrl,
+          expect.objectContaining({
+            data: {
+              action: 'link',
+              groupId: '1',
+              issue: 'my issue',
+            },
+            method: 'POST',
+          })
+        );
+      });
     });
   });
 });
 
 describe('SentryAppExternalIssueForm Async Field', () => {
-  let wrapper;
   let group;
   let sentryApp;
   let sentryAppInstallation;
@@ -176,7 +193,7 @@ describe('SentryAppExternalIssueForm Async Field', () => {
         },
       });
 
-      wrapper = mountWithTheme(
+      renderWithTheme(
         <SentryAppExternalIssueForm
           group={group}
           sentryAppInstallation={sentryAppInstallation}
@@ -184,24 +201,27 @@ describe('SentryAppExternalIssueForm Async Field', () => {
           config={component.schema.create}
           action="create"
           api={new Client()}
-        />,
-        TestStubs.routerContext()
+        />
       );
 
-      const thisInput = wrapper.find('input').at(0);
-      changeInputValue(thisInput, 'I');
+      // Type in the async select field to trigger loading options
+      const numbersField = screen.getByTestId('numbers');
+      const selectInput = within(numbersField).getByRole('textbox');
+      await userEvent.type(selectInput, 'I');
 
-      await tick();
-      wrapper.update();
-      expect(mockGetOptions).toHaveBeenCalled();
-      expect(wrapper.find(optionLabelSelector('Issue 1')).exists()).toBe(true);
-      expect(wrapper.find(optionLabelSelector('Issue 2')).exists()).toBe(true);
+      await waitFor(() => {
+        expect(mockGetOptions).toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Issue 1')).toBeInTheDocument();
+        expect(screen.getByText('Issue 2')).toBeInTheDocument();
+      });
     });
   });
 });
 
 describe('SentryAppExternalIssueForm Dependent fields', () => {
-  let wrapper;
   let group;
   let sentryApp;
   let sentryAppInstallation;
@@ -215,18 +235,6 @@ describe('SentryAppExternalIssueForm Dependent fields', () => {
     });
     sentryApp = TestStubs.SentryApp();
     sentryAppInstallation = TestStubs.SentryAppInstallation({sentryApp});
-
-    wrapper = mountWithTheme(
-      <SentryAppExternalIssueForm
-        group={group}
-        sentryAppInstallation={sentryAppInstallation}
-        appName={sentryApp.name}
-        config={component.schema.create}
-        action="create"
-        api={new Client()}
-      />,
-      TestStubs.routerContext()
-    );
   });
 
   afterEach(() => {
@@ -275,34 +283,58 @@ describe('SentryAppExternalIssueForm Dependent fields', () => {
         }
       );
 
-      const projectInput = wrapper.find('[data-test-id="project_id"] input').at(0);
-      changeInputValue(projectInput, 'p');
-      await tick();
-      wrapper.update();
+      renderWithTheme(
+        <SentryAppExternalIssueForm
+          group={group}
+          sentryAppInstallation={sentryAppInstallation}
+          appName={sentryApp.name}
+          config={component.schema.create}
+          action="create"
+          api={new Client()}
+        />
+      );
 
-      expect(wrapper.find(optionLabelSelector('project A')).exists()).toBe(true);
-      expect(wrapper.find(optionLabelSelector('project B')).exists()).toBe(true);
+      // Type in the project_id field to load its options
+      const projectInput = screen.getByTestId('project_id');
+      const projectCombobox = within(projectInput).getByRole('textbox');
+      await userEvent.type(projectCombobox, 'p');
 
-      //project select should be disabled and we shouldn't fetch the options yet
-      expect(wrapper.find('SelectControl#board_id').prop('disabled')).toBe(true);
+      await waitFor(() => {
+        expect(screen.getByText('project A')).toBeInTheDocument();
+        expect(screen.getByText('project B')).toBeInTheDocument();
+      });
+
+      // Verify board select is disabled initially
+      const boardInput = screen.getByTestId('board_id');
+      const boardSelectControl = boardInput.querySelector(
+        'input[aria-autocomplete="list"]'
+      );
+      expect(boardSelectControl).toHaveAttribute('disabled');
       expect(boardMock).not.toHaveBeenCalled();
 
-      //when we set the value for project we should get the values for the board
-      selectByValue(wrapper, 'A', {name: 'project_id'});
-      await tick();
-      wrapper.update();
+      // Select project A to trigger dependent field loading
+      fireEvent.click(screen.getByText('project A'));
 
-      expect(boardMock).toHaveBeenCalled();
-      expect(wrapper.find('SelectControl#board_id').prop('disabled')).toBe(false);
+      await waitFor(() => {
+        expect(boardMock).toHaveBeenCalled();
+      });
 
-      const boardInput = wrapper.find('[data-test-id="board_id"] input').at(0);
-      changeInputValue(boardInput, 'b');
+      // Verify board select is now enabled
+      await waitFor(() => {
+        const boardSelectUpdated = boardInput.querySelector(
+          'input[aria-autocomplete="list"]'
+        );
+        expect(boardSelectUpdated).not.toHaveAttribute('disabled');
+      });
 
-      await tick();
-      wrapper.update();
+      // Type in the board field to see the loaded options
+      const boardCombobox = within(boardInput).getByRole('textbox');
+      await userEvent.type(boardCombobox, 'b');
 
-      expect(wrapper.find(optionLabelSelector('board R')).exists()).toBe(true);
-      expect(wrapper.find(optionLabelSelector('board S')).exists()).toBe(true);
+      await waitFor(() => {
+        expect(screen.getByText('board R')).toBeInTheDocument();
+        expect(screen.getByText('board S')).toBeInTheDocument();
+      });
     });
   });
 });

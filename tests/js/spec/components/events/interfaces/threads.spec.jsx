@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import Threads from 'app/components/events/interfaces/threads';
 
@@ -50,7 +50,7 @@ describe('Threads', () => {
       ],
     };
 
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <Threads
         type={type}
         data={data}
@@ -65,11 +65,13 @@ describe('Threads', () => {
       newEvent.entries[0].data.values[0].stacktrace.frames.length +
       newEvent.entries[0].data.values[1].stacktrace.frames.length;
 
-    expect(wrapper.find('Line').length).toBe(totalFramesPasses);
+    expect(
+      container.querySelectorAll('[data-test-id="stack-trace-content-v3-line"]').length
+    ).toBe(totalFramesPasses);
   });
 
   it('Display no frame', () => {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <Threads
         type={type}
         data={{...data, values: [{...data.values[0], stacktrace: null}]}}
@@ -93,14 +95,16 @@ describe('Threads', () => {
     );
 
     // no exceptions or stacktraces have been found
-    expect(wrapper.find('Line').length).toBe(0);
+    expect(
+      container.querySelectorAll('[data-test-id="stack-trace-content-v3-line"]').length
+    ).toBe(0);
   });
 
   describe('Displays the stack trace of an exception if all threadIds of exceptionEntry.data.values do not match the threadId of the active thread and if the active thread has crashed equals true', () => {
     const threadsEntry = entries[1];
 
     it('Displays the exception stacktrace', () => {
-      const wrapper = mountWithTheme(
+      const {container} = renderWithTheme(
         <Threads
           type={threadsEntry.type}
           data={threadsEntry.data}
@@ -111,11 +115,13 @@ describe('Threads', () => {
       );
 
       // envent.entries[0].data.values[0].stacktrace is defined
-      expect(wrapper.find('Line').length).toBe(1);
+      expect(
+        container.querySelectorAll('[data-test-id="stack-trace-content-v3-line"]').length
+      ).toBe(1);
     });
 
     it('Displays the the active thread stacktrace', () => {
-      const wrapper = mountWithTheme(
+      const {container} = renderWithTheme(
         <Threads
           type={threadsEntry.type}
           data={threadsEntry.data}
@@ -139,7 +145,9 @@ describe('Threads', () => {
       );
 
       // the 'threads' entry has a stack trace with 23 frames, but as one of them is duplicated, we only display 22
-      expect(wrapper.find('Line').length).toBe(22);
+      expect(
+        container.querySelectorAll('[data-test-id="stack-trace-content-v3-line"]').length
+      ).toBe(22);
     });
   });
 });

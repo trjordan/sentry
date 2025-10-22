@@ -1,53 +1,50 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import Button from 'app/components/button';
 
 describe('Button', function () {
-  const routerContext = TestStubs.routerContext();
-
   it('renders', function () {
-    const component = mountWithTheme(<Button priority="primary">Button</Button>);
-    expect(component).toSnapshot();
+    renderWithTheme(<Button priority="primary">Button</Button>);
+    expect(screen.getByRole('button', {name: 'Button'})).toBeInTheDocument();
   });
 
   it('renders react-router link', function () {
-    const component = mountWithTheme(
-      <Button to="/some/route">Router Link</Button>,
-      routerContext
-    );
-    expect(component).toSnapshot();
+    renderWithTheme(<Button to="/some/route">Router Link</Button>);
+    expect(screen.getByRole('button', {name: 'Router Link'})).toBeInTheDocument();
   });
 
   it('renders normal link', function () {
-    const component = mountWithTheme(
-      <Button href="/some/relative/url">Normal Link</Button>,
-      routerContext
-    );
-    expect(component).toSnapshot();
+    renderWithTheme(<Button href="/some/relative/url">Normal Link</Button>);
+    expect(screen.getByRole('button', {name: 'Normal Link'})).toBeInTheDocument();
   });
 
   it('renders disabled normal link', function () {
-    const component = mountWithTheme(
-      <Button href="/some/relative/url">Normal Link</Button>,
-      routerContext
+    renderWithTheme(
+      <Button href="/some/relative/url" disabled>
+        Normal Link
+      </Button>
     );
-    expect(component).toSnapshot();
+    const button = screen.getByRole('button', {name: 'Normal Link'});
+    expect(button).toBeInTheDocument();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('calls `onClick` callback', function () {
+  it('calls `onClick` callback', async function () {
     const spy = jest.fn();
-    const component = mountWithTheme(<Button onClick={spy} />, routerContext);
-    component.simulate('click');
+    renderWithTheme(<Button onClick={spy} />);
+
+    await userEvent.click(screen.getByRole('button'));
 
     expect(spy).toHaveBeenCalled();
   });
 
-  it('does not call `onClick` on disabled buttons', function () {
+  it('does not call `onClick` on disabled buttons', async function () {
     const spy = jest.fn();
-    const component = mountWithTheme(<Button onClick={spy} disabled />, routerContext);
-    component.simulate('click');
+    renderWithTheme(<Button onClick={spy} disabled />);
+
+    await userEvent.click(screen.getByRole('button'));
 
     expect(spy).not.toHaveBeenCalled();
   });

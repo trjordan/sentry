@@ -301,12 +301,9 @@ export class SentryAppExternalIssueForm extends React.Component<Props, State> {
       : {};
 
     return (
-      <FieldFromConfig
-        key={field.name}
-        field={fieldToPass}
-        data-test-id={field.name}
-        {...extraProps}
-      />
+      <div key={field.name} data-test-id={field.name}>
+        <FieldFromConfig field={fieldToPass} {...extraProps} />
+      </div>
     );
   };
 

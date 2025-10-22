@@ -90,7 +90,7 @@ const PanelTable = ({
       hasRows={shouldShowContent}
     >
       {headers.map((header, i) => (
-        <PanelTableHeader key={i}>{header}</PanelTableHeader>
+        <PanelTableHeader key={i} role="columnheader">{header}</PanelTableHeader>
       ))}
 
       {shouldShowLoading && (
@@ -139,7 +139,7 @@ const Wrapper = styled(Panel, {
   > * {
     ${p => (p.disablePadding ? '' : `padding: ${space(2)};`)}
 
-    &:nth-last-child(n + ${p => (p.hasRows ? p.columns + 1 : 0)}) {
+    &:nth-last-of-type(n + ${p => (p.hasRows ? p.columns + 1 : 0)}) {
       border-bottom: 1px solid ${p => p.theme.border};
     }
   }

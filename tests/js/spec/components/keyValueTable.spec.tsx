@@ -1,22 +1,29 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import {KeyValueTable, KeyValueTableRow} from 'app/components/keyValueTable';
 
 describe('KeyValueTable', function () {
   it('basic', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <KeyValueTable>
         <KeyValueTableRow keyName="Coffee" value="Black hot drink" />
         <KeyValueTableRow keyName="Milk" value={<a href="#">White cold drink</a>} />
       </KeyValueTable>
     );
 
-    expect(wrapper.find('dl').exists()).toBeTruthy();
-    expect(wrapper.find('dt').at(0).text()).toBe('Coffee');
-    expect(wrapper.find('dd').at(0).text()).toBe('Black hot drink');
-    expect(wrapper.find('dt').at(1).text()).toBe('Milk');
-    expect(wrapper.find('dd a').text()).toBe('White cold drink');
+    expect(container.querySelector('dl')).toBeInTheDocument();
+
+    const dtElements = container.querySelectorAll('dt');
+    expect(dtElements[0]).toHaveTextContent('Coffee');
+    expect(dtElements[1]).toHaveTextContent('Milk');
+
+    const ddElements = container.querySelectorAll('dd');
+    expect(ddElements[0]).toHaveTextContent('Black hot drink');
+
+    const link = container.querySelector('dd a');
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveTextContent('White cold drink');
   });
 });

@@ -2,29 +2,22 @@ import React from 'react';
 import {browserHistory} from 'react-router';
 import * as Sentry from '@sentry/react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {initializeOrg} from 'sentry-test/initializeOrg';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import {trackAnalyticsEvent} from 'app/utils/analytics';
 import CreateSampleEventButton from 'app/views/onboarding/createSampleEventButton';
 
-jest.useFakeTimers();
+jest.useFakeTimers('legacy');
 jest.mock('app/utils/analytics');
 
 describe('CreateSampleEventButton', function () {
-  const {org, project, routerContext} = initializeOrg();
+  const org = TestStubs.Organization();
+  const project = TestStubs.Project({platform: 'javascript'});
   const groupID = '123';
-
-  const wrapper = mountWithTheme(
-    <CreateSampleEventButton
-      source="test"
-      project={{...project, platform: 'javascript'}}
-    />,
-    routerContext
-  );
 
   beforeEach(function () {
     MockApiClient.clearMockResponses();
+    jest.clearAllTimers();
   });
 
   it('creates a sample event', async function () {
@@ -34,12 +27,16 @@ describe('CreateSampleEventButton', function () {
       body: {groupID},
     });
 
-    wrapper.find('[data-test-id="create-sample-event"]').first().simulate('click');
+    renderWithTheme(
+      <CreateSampleEventButton source="test" project={project} organization={org} />
+    );
+
+    const button = screen.getByRole('button');
+
+    button.click();
 
     // The button should be disabled while creating the event
-    expect(
-      wrapper.find('[data-test-id="create-sample-event"]').first().prop('disabled')
-    ).toBe(true);
+    expect(button).toHaveAttribute('aria-disabled', 'true');
 
     // We have to await the API calls. We could normally do this using tick(),
     // however since we have enabled fake timers to handle the spin-wait on the
@@ -64,10 +61,7 @@ describe('CreateSampleEventButton', function () {
     await Promise.resolve();
     await Promise.resolve();
 
-    wrapper.update();
-    expect(
-      wrapper.find('[data-test-id="create-sample-event"]').first().prop('disabled')
-    ).toBe(false);
+    expect(button).toHaveAttribute('aria-disabled', 'false');
 
     expect(browserHistory.push).toHaveBeenCalledWith(
       `/organizations/${org.slug}/issues/${groupID}/`
@@ -81,7 +75,12 @@ describe('CreateSampleEventButton', function () {
       body: {groupID},
     });
 
-    wrapper.find('[data-test-id="create-sample-event"]').first().simulate('click');
+    renderWithTheme(
+      <CreateSampleEventButton source="test" project={project} organization={org} />
+    );
+
+    const button = screen.getByRole('button');
+    button.click();
 
     await Promise.resolve();
     expect(createRequest).toHaveBeenCalled();

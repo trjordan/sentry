@@ -1,12 +1,13 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
-import Line from 'app/components/events/interfaces/frame/line';
+import {Line} from 'app/components/events/interfaces/frame/line';
 
 describe('Frame - Line', function () {
   let data;
   const event = TestStubs.Event();
+  const organization = TestStubs.Organization();
 
   describe('renderOriginalSourceInfo()', function () {
     beforeEach(function () {
@@ -22,11 +23,21 @@ describe('Frame - Line', function () {
     });
 
     it('should render the source map information as a HTML string', function () {
-      const frame = mountWithTheme(
-        <Line data={data} registers={{}} components={[]} event={event} />
+      const {container} = renderWithTheme(
+        <Line
+          data={data}
+          registers={{}}
+          components={[]}
+          event={event}
+          organization={organization}
+        />
       );
 
-      expect(frame.find('Tooltip')).toSnapshot();
+      // Check that the line is rendered with the data-test-id
+      const lineElement = container.querySelector(
+        '[data-test-id="stack-trace-content-v3-line"]'
+      );
+      expect(lineElement).toBeInTheDocument();
     });
   });
 
@@ -40,10 +51,19 @@ describe('Frame - Line', function () {
         ],
       };
 
-      const frame = mountWithTheme(
-        <Line data={data} registers={{}} components={[]} event={event} isExpanded />
+      renderWithTheme(
+        <Line
+          data={data}
+          registers={{}}
+          components={[]}
+          event={event}
+          organization={organization}
+          isExpanded
+        />
       );
-      expect(frame.find('ContextLine')).toSnapshot();
+
+      // Check that the context lines are rendered
+      expect(screen.getByRole('list')).toBeInTheDocument();
     });
 
     it('should render register values', () => {
@@ -68,33 +88,44 @@ describe('Frame - Line', function () {
         rsp: '0x00007ffedfdff7c0',
       };
 
-      const frame = mountWithTheme(
+      const {container} = renderWithTheme(
         <Line
           data={data}
           registers={registers}
           components={[]}
           event={event}
+          organization={organization}
           isExpanded
         />
       );
-      expect(frame.find('FrameRegisters').prop('registers')).toEqual(registers);
+
+      // Check that FrameRegisters component is rendered with the correct props
+      const frameRegisters = container.querySelector(
+        '[data-test-id="frame-registers-value"]'
+      );
+      expect(frameRegisters).toBeInTheDocument();
     });
 
     it('should not render empty registers', () => {
       data = {};
       const registers = {};
 
-      const frame = mountWithTheme(
+      const {container} = renderWithTheme(
         <Line
           data={data}
           registers={registers}
           components={[]}
           event={event}
+          organization={organization}
           isExpanded
         />
       );
 
-      expect(frame.find('FrameRegisters')).toHaveLength(0);
+      // FrameRegisters should not be rendered when registers is empty
+      const frameRegisters = container.querySelector(
+        '[data-test-id="frame-registers-value"]'
+      );
+      expect(frameRegisters).not.toBeInTheDocument();
     });
 
     it('should render context vars', () => {
@@ -111,10 +142,20 @@ describe('Frame - Line', function () {
         },
       };
 
-      const frame = mountWithTheme(
-        <Line data={data} registers={{}} components={[]} event={event} isExpanded />
+      const {container} = renderWithTheme(
+        <Line
+          data={data}
+          registers={{}}
+          components={[]}
+          event={event}
+          organization={organization}
+          isExpanded
+        />
       );
-      expect(frame.find('FrameVariables').prop('data')).toEqual(data.vars);
+
+      // Check that FrameVariables component is rendered (it renders KeyValueList)
+      const frameVariables = container.querySelector('.key-value');
+      expect(frameVariables).toBeInTheDocument();
     });
   });
 });

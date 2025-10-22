@@ -1,11 +1,35 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import DropdownAutoCompleteMenu from 'app/components/dropdownAutoComplete/menu';
 
+// Mock document.createRange which is used by userEvent
+document.createRange = () => {
+  const range = {
+    setStart: jest.fn(),
+    setEnd: jest.fn(),
+    commonAncestorContainer: {
+      nodeName: 'BODY',
+      ownerDocument: document,
+    },
+    getBoundingClientRect: jest.fn(() => ({
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+    })),
+    getClientRects: jest.fn(() => []),
+    cloneRange: jest.fn(function () {
+      return this;
+    }),
+  };
+  return range;
+};
+
 describe('DropdownAutoCompleteMenu', function () {
-  const routerContext = TestStubs.routerContext();
   const items = [
     {
       value: 'apple',
@@ -20,18 +44,26 @@ describe('DropdownAutoCompleteMenu', function () {
       label: <div>Corn</div>,
     },
   ];
+
   it('renders without a group', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <DropdownAutoCompleteMenu isOpen items={items}>
         {() => 'Click Me!'}
-      </DropdownAutoCompleteMenu>,
-      routerContext
+      </DropdownAutoCompleteMenu>
     );
-    expect(wrapper).toSnapshot();
+
+    expect(screen.getByText('Click Me!')).toBeInTheDocument();
+    expect(screen.getByText('Apple')).toBeInTheDocument();
+    expect(screen.getByText('Bacon')).toBeInTheDocument();
+    expect(screen.getByText('Corn')).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-test-id="autocomplete-list"]')
+    ).toBeInTheDocument();
   });
 
   it('renders with a group', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <DropdownAutoCompleteMenu
         isOpen
         items={[
@@ -53,13 +85,18 @@ describe('DropdownAutoCompleteMenu', function () {
         ]}
       >
         {() => 'Click Me!'}
-      </DropdownAutoCompleteMenu>,
-      routerContext
+      </DropdownAutoCompleteMenu>
     );
-    expect(wrapper).toSnapshot();
+
+    expect(screen.getByText('Click Me!')).toBeInTheDocument();
+    expect(screen.getByText('New Zealand')).toBeInTheDocument();
+    expect(screen.getByText('Australia')).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-test-id="autocomplete-list"]')
+    ).toBeInTheDocument();
   });
 
-  it('selects', function () {
+  it('selects', async function () {
     const mock = jest.fn();
     const countries = [
       {
@@ -71,7 +108,7 @@ describe('DropdownAutoCompleteMenu', function () {
         label: <div>Australia</div>,
       },
     ];
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <DropdownAutoCompleteMenu
         isOpen
         items={[
@@ -85,11 +122,10 @@ describe('DropdownAutoCompleteMenu', function () {
         onSelect={mock}
       >
         {({selectedItem}) => (selectedItem ? selectedItem.label : 'Click me!')}
-      </DropdownAutoCompleteMenu>,
-      routerContext
+      </DropdownAutoCompleteMenu>
     );
 
-    wrapper.find('AutoCompleteItem').last().simulate('click');
+    await userEvent.click(screen.getByText('Australia'));
 
     expect(mock).toHaveBeenCalledTimes(1);
     expect(mock).toHaveBeenCalledWith(
@@ -100,7 +136,7 @@ describe('DropdownAutoCompleteMenu', function () {
   });
 
   it('shows empty message when there are no items', function () {
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <DropdownAutoCompleteMenu
         items={[]}
         emptyMessage="No items!"
@@ -108,32 +144,28 @@ describe('DropdownAutoCompleteMenu', function () {
         isOpen
       >
         {({selectedItem}) => (selectedItem ? selectedItem.label : 'Click me!')}
-      </DropdownAutoCompleteMenu>,
-      routerContext
+      </DropdownAutoCompleteMenu>
     );
 
-    expect(wrapper.find('EmptyMessage')).toHaveLength(1);
-    expect(wrapper.find('EmptyMessage').text()).toBe('No items!');
+    expect(screen.getByText('No items!')).toBeInTheDocument();
 
     // No input because there are no items
-    expect(wrapper.find('StyledInput')).toHaveLength(0);
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  it('shows default empty results message when there are no items found in search', function () {
-    const wrapper = mountWithTheme(
+  it('shows default empty results message when there are no items found in search', async function () {
+    renderWithTheme(
       <DropdownAutoCompleteMenu isOpen items={items} emptyMessage="No items!">
         {({selectedItem}) => (selectedItem ? selectedItem.label : 'Click me!')}
-      </DropdownAutoCompleteMenu>,
-      routerContext
+      </DropdownAutoCompleteMenu>
     );
 
-    wrapper.find('StyledInput').simulate('change', {target: {value: 'U-S-A'}});
-    expect(wrapper.find('EmptyMessage')).toHaveLength(1);
-    expect(wrapper.find('EmptyMessage').text()).toBe('No items! found');
+    await userEvent.type(screen.getByRole('textbox'), 'U-S-A');
+    expect(screen.getByText('No items! found')).toBeInTheDocument();
   });
 
-  it('overrides default empty results message', function () {
-    const wrapper = mountWithTheme(
+  it('overrides default empty results message', async function () {
+    renderWithTheme(
       <DropdownAutoCompleteMenu
         isOpen
         items={items}
@@ -141,35 +173,34 @@ describe('DropdownAutoCompleteMenu', function () {
         noResultsMessage="No search results"
       >
         {({selectedItem}) => (selectedItem ? selectedItem.label : 'Click me!')}
-      </DropdownAutoCompleteMenu>,
-      routerContext
+      </DropdownAutoCompleteMenu>
     );
 
-    wrapper.find('StyledInput').simulate('change', {target: {value: 'U-S-A'}});
-    expect(wrapper.find('EmptyMessage').text()).toBe('No search results');
+    await userEvent.type(screen.getByRole('textbox'), 'U-S-A');
+    expect(screen.getByText('No search results')).toBeInTheDocument();
   });
 
   it('hides filter with `hideInput` prop', function () {
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <DropdownAutoCompleteMenu isOpen items={items} hideInput>
         {() => 'Click Me!'}
-      </DropdownAutoCompleteMenu>,
-      routerContext
+      </DropdownAutoCompleteMenu>
     );
 
-    expect(wrapper.find('StyledInput')).toHaveLength(0);
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  it('filters using a value from prop instead of input', function () {
-    const wrapper = mountWithTheme(
+  it('filters using a value from prop instead of input', async function () {
+    renderWithTheme(
       <DropdownAutoCompleteMenu isOpen items={items} filterValue="Apple">
         {() => 'Click Me!'}
-      </DropdownAutoCompleteMenu>,
-      routerContext
+      </DropdownAutoCompleteMenu>
     );
-    wrapper.find('StyledInput').simulate('change', {target: {value: 'U-S-A'}});
-    expect(wrapper.find('EmptyMessage')).toHaveLength(0);
-    expect(wrapper.find('AutoCompleteItem')).toHaveLength(1);
-    expect(wrapper.find('AutoCompleteItem').text()).toBe('Apple');
+
+    await userEvent.type(screen.getByRole('textbox'), 'U-S-A');
+    expect(screen.queryByText('No items! found')).not.toBeInTheDocument();
+    expect(screen.getByText('Apple')).toBeInTheDocument();
+    expect(screen.queryByText('Bacon')).not.toBeInTheDocument();
+    expect(screen.queryByText('Corn')).not.toBeInTheDocument();
   });
 });

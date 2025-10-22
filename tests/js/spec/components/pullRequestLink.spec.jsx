@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import PullRequestLink from 'app/components/pullRequestLink';
 
@@ -11,12 +11,14 @@ describe('PullRequestLink', function () {
       repository,
       externalUrl: null,
     });
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <PullRequestLink repository={repository} pullRequest={pullRequest} />
     );
 
-    expect(wrapper.find('a')).toHaveLength(0);
-    expect(wrapper.find('span').text()).toEqual('example/repo-name #3: Fix first issue');
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(container.querySelector('span')).toHaveTextContent(
+      'example/repo-name #3: Fix first issue'
+    );
   });
 
   it('renders github links for integrations:github repositories', function () {
@@ -26,16 +28,13 @@ describe('PullRequestLink', function () {
       },
     });
     const pullRequest = TestStubs.PullRequest({repository});
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <PullRequestLink repository={repository} pullRequest={pullRequest} />
     );
 
-    const icon = wrapper.find('IconGithub').hostNodes();
-    expect(icon).toHaveLength(0);
-
-    const link = wrapper.find('a');
-    expect(link).toHaveLength(1);
-    expect(link.text().trim()).toEqual('example/repo-name #3: Fix first issue');
+    const link = screen.getByRole('link');
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveTextContent('example/repo-name #3: Fix first issue');
   });
 
   it('renders github links for github repositories', function () {
@@ -45,16 +44,13 @@ describe('PullRequestLink', function () {
       },
     });
     const pullRequest = TestStubs.PullRequest({repository});
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <PullRequestLink repository={repository} pullRequest={pullRequest} />
     );
 
-    const icon = wrapper.find('IconGithub').hostNodes();
-    expect(icon).toHaveLength(0);
-
-    const link = wrapper.find('a');
-    expect(link).toHaveLength(1);
-    expect(link.text().trim()).toEqual('example/repo-name #3: Fix first issue');
+    const link = screen.getByRole('link');
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveTextContent('example/repo-name #3: Fix first issue');
   });
 
   it('renders gitlab links for integrations:gitlab repositories', function () {
@@ -64,16 +60,13 @@ describe('PullRequestLink', function () {
       },
     });
     const pullRequest = TestStubs.PullRequest({repository});
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <PullRequestLink repository={repository} pullRequest={pullRequest} />
     );
 
-    const icon = wrapper.find('IconGitlab').hostNodes();
-    expect(icon).toHaveLength(0);
-
-    const link = wrapper.find('a');
-    expect(link).toHaveLength(1);
-    expect(link.text().trim()).toEqual('example/repo-name #3: Fix first issue');
+    const link = screen.getByRole('link');
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveTextContent('example/repo-name #3: Fix first issue');
   });
 
   it('renders github links for gitlab repositories', function () {
@@ -83,15 +76,12 @@ describe('PullRequestLink', function () {
       },
     });
     const pullRequest = TestStubs.PullRequest({repository});
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <PullRequestLink repository={repository} pullRequest={pullRequest} />
     );
 
-    const icon = wrapper.find('IconGitlab').hostNodes();
-    expect(icon).toHaveLength(0);
-
-    const link = wrapper.find('a');
-    expect(link).toHaveLength(1);
-    expect(link.text().trim()).toEqual('example/repo-name #3: Fix first issue');
+    const link = screen.getByRole('link');
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveTextContent('example/repo-name #3: Fix first issue');
   });
 });

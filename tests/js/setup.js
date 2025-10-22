@@ -79,7 +79,7 @@ jest.mock('react-router', () => {
       goBack: jest.fn(),
       push: jest.fn(),
       replace: jest.fn(),
-      listen: jest.fn(() => {}),
+      listen: jest.fn(() => jest.fn()),
     },
   };
 });
@@ -159,6 +159,24 @@ window.tick = () => new Promise(resolve => setTimeout(resolve));
 
 window.scrollTo = jest.fn();
 
+// Mock document.getSelection for user-event
+window.document.getSelection = jest.fn(() => ({
+  removeAllRanges: jest.fn(),
+  addRange: jest.fn(),
+}));
+
+// Mock MutationObserver for RTL
+global.MutationObserver = class {
+  constructor(callback) {
+    this.callback = callback;
+  }
+  disconnect() {}
+  observe() {}
+  takeRecords() {
+    return [];
+  }
+};
+
 // This is very commonly used, so expose it globally.
 window.MockApiClient = jest.requireMock('app/api').Client;
 
@@ -170,10 +188,22 @@ window.TestStubs = {
     go: jest.fn(),
     goBack: jest.fn(),
     goForward: jest.fn(),
-    listen: jest.fn(),
+    listen: jest.fn(() => jest.fn()),
     setRouteLeaveHook: jest.fn(),
     isActive: jest.fn(),
-    createHref: jest.fn(),
+    createHref: jest.fn(location => {
+      if (typeof location === 'string') {
+        return location;
+      }
+      const {pathname, query} = location;
+      const queryString = query
+        ? '?' +
+          Object.entries(query)
+            .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+            .join('&')
+        : '';
+      return `${pathname}${queryString}`;
+    }),
     location: {query: {}},
     ...params,
   }),

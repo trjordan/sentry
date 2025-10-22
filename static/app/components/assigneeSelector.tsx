@@ -216,7 +216,7 @@ class AssigneeSelector extends React.Component<Props, State> {
       searchKey: `${member.email} ${member.name}`,
       label: ({inputValue}) => (
         <MenuItemWrapper
-          data-test-id="assignee-option"
+          data-testid="assignee-option"
           key={buildUserId(member.id)}
           onSelect={this.assignToUser.bind(this, member)}
         >
@@ -248,7 +248,7 @@ class AssigneeSelector extends React.Component<Props, State> {
       searchKey: team.slug,
       label: ({inputValue}) => (
         <MenuItemWrapper
-          data-test-id="assignee-option"
+          data-testid="assignee-option"
           key={id}
           onSelect={this.assignToTeam.bind(this, team)}
         >
@@ -432,7 +432,7 @@ class AssigneeSelector extends React.Component<Props, State> {
             emptyHidesInput
           >
             {({getActorProps, isOpen}) => (
-              <DropdownButton {...getActorProps({})}>
+              <DropdownButton {...getActorProps({})} data-testid="assignee-selector">
                 {assignedTo ? (
                   <ActorAvatar
                     actor={assignedTo}

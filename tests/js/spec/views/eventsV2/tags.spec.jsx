@@ -1,7 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {initializeOrg} from 'sentry-test/initializeOrg';
+import {render, screen, userEvent, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'app/api';
 import EventView from 'app/utils/discover/eventView';
@@ -46,7 +45,7 @@ describe('Tags', function () {
       query: 'event.type:csp',
     });
 
-    const wrapper = mountWithTheme(
+    const {container} = render(
       <Tags
         eventView={view}
         api={api}
@@ -59,18 +58,24 @@ describe('Tags', function () {
       />
     );
 
-    // component is in loading state
-    expect(wrapper.find('StyledPlaceholder').length).toBeTruthy();
+    // component is in loading state - placeholder divs should be visible
+    expect(container.querySelectorAll('[class*="StyledPlaceholder"]').length).toBeTruthy();
 
-    await tick();
-    wrapper.update();
+    // Wait for component to load
+    await waitFor(() => {
+      expect(container.querySelectorAll('[class*="StyledPlaceholder"]')).toHaveLength(0);
+    });
 
-    // component has loaded
-    expect(wrapper.find('StyledPlaceholder')).toHaveLength(0);
+    // Verify tag content has loaded
+    expect(screen.getByText('Tag Summary')).toBeInTheDocument();
   });
 
   it('creates URLs with generateUrl', async function () {
     const api = new Client();
+    const mockPush = jest.fn();
+    const router = TestStubs.router({
+      push: mockPush,
+    });
 
     const view = new EventView({
       fields: [],
@@ -78,48 +83,46 @@ describe('Tags', function () {
       query: 'event.type:csp',
     });
 
-    const initialData = initializeOrg({
-      organization: org,
-      router: {
-        location: {query: {}},
-      },
-    });
-
-    const wrapper = mountWithTheme(
+    const {container} = render(
       <Tags
         eventView={view}
         api={api}
         organization={org}
         totalValues={2}
         selection={{projects: [], environments: [], datetime: {}}}
-        location={initialData.router.location}
+        location={{query: {}}}
         generateUrl={generateUrl}
         confirmedQuery={false}
       />,
-      initialData.routerContext
+      {
+        context: {
+          router,
+        },
+      }
     );
 
-    // component is in loading state
-    expect(wrapper.find('StyledPlaceholder').length).toBeTruthy();
+    // Wait for component to load - placeholders should disappear
+    await waitFor(() => {
+      expect(container.querySelectorAll('[class*="StyledPlaceholder"]')).toHaveLength(0);
+    });
 
-    await tick();
-    wrapper.update();
+    // Find all the tag meters
+    const tagMeters = screen.getAllByTestId('group-tag-distribution-meter');
+    
+    // Find the environment tag meter (second one in the mock data)
+    const environmentMeter = tagMeters[1];
+    
+    // Find the clickable link within the environment meter - it's a segment bar link
+    const environmentLink = environmentMeter.querySelector('a');
+    
+    // Verify the link exists and has the correct URL
+    expect(environmentLink).toBeTruthy();
+    expect(environmentLink).toHaveAttribute('href', '/endpoint/environment/abcd123');
 
-    // component has loaded
-    expect(wrapper.find('StyledPlaceholder')).toHaveLength(0);
+    // Click the segment
+    await userEvent.click(environmentLink);
 
-    const environmentFacetMap = wrapper
-      .find('TagDistributionMeter')
-      .filterWhere(component => component.props().title === 'environment')
-      .first();
-
-    const clickable = environmentFacetMap.find('Segment').first();
-
-    clickable.simulate('click', {button: 0});
-
-    await tick();
-    wrapper.update();
-
-    expect(initialData.router.push).toHaveBeenCalledWith('/endpoint/environment/abcd123');
+    // Verify router.push was called with the correct URL
+    expect(mockPush).toHaveBeenCalledWith('/endpoint/environment/abcd123');
   });
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render} from 'sentry-test/reactTestingLibrary';
 
 import MetaData from 'app/components/events/meta/metaData';
 import {withMeta} from 'app/components/events/meta/metaProxy';
@@ -12,7 +12,7 @@ describe('MetaData', function () {
 
   it('can get meta data', function () {
     const renderProp = jest.fn(() => null);
-    mountWithTheme(
+    render(
       <MetaData object={proxiedExc.exception.values[0]} prop="value">
         {renderProp}
       </MetaData>

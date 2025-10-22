@@ -374,7 +374,7 @@ export class Line extends React.Component<Props, State> {
       'frame-errors': data.errors,
       'leads-to-app': this.leadsToApp(),
     });
-    const props = {className};
+    const props = {className, 'data-test-id': 'stack-trace-content-v3-line'};
 
     return (
       <StyledLi {...props}>

@@ -1,8 +1,39 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
 
 import ProjectSelector from 'app/components/organizations/projectSelector';
+
+// Mock document.createRange which is used by userEvent
+document.createRange = () => {
+  const range = {
+    setStart: jest.fn(),
+    setEnd: jest.fn(),
+    commonAncestorContainer: {
+      nodeName: 'BODY',
+      ownerDocument: document,
+    },
+    getBoundingClientRect: jest.fn(() => ({
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: 0,
+      height: 0,
+    })),
+    getClientRects: jest.fn(() => []),
+  };
+  range.cloneRange = () => range;
+  range.collapse = jest.fn();
+  range.selectNode = jest.fn();
+  range.selectNodeContents = jest.fn();
+  return range;
+};
 
 describe('ProjectSelector', function () {
   const testTeam = TestStubs.Team({
@@ -34,10 +65,9 @@ describe('ProjectSelector', function () {
     access: [],
   });
 
-  const routerContext = TestStubs.routerContext([{organization: mockOrg}]);
-
-  const openMenu = wrapper =>
-    wrapper.find('[data-test-id="test-actor"]').simulate('click');
+  const openMenu = async () => {
+    await userEvent.click(screen.getByTestId('test-actor'));
+  };
 
   const actorRenderer = jest.fn(() => <div data-test-id="test-actor" />);
 
@@ -51,8 +81,8 @@ describe('ProjectSelector', function () {
     menuFooter: () => {},
   };
 
-  it('should show empty message with no projects button, when no projects, and has no "project:write" access', function () {
-    const wrapper = mountWithTheme(
+  it('should show empty message with no projects button, when no projects, and has no "project:write" access', async function () {
+    renderWithTheme(
       <ProjectSelector
         {...props}
         multiProjects={[]}
@@ -63,18 +93,17 @@ describe('ProjectSelector', function () {
           projects: [],
           access: [],
         }}
-      />,
-      routerContext
+      />
     );
 
-    openMenu(wrapper);
-    expect(wrapper.find('EmptyMessage').prop('children')).toBe('You have no projects');
+    await openMenu();
+    expect(screen.getByText('You have no projects')).toBeInTheDocument();
     // Should not have "Create Project" button
-    expect(wrapper.find('CreateProjectButton')).toHaveLength(0);
+    expect(screen.queryByText('Create project')).not.toBeInTheDocument();
   });
 
-  it('should show empty message and create project button, when no projects and has "project:write" access', function () {
-    const wrapper = mountWithTheme(
+  it('should show empty message and create project button, when no projects and has "project:write" access', async function () {
+    renderWithTheme(
       <ProjectSelector
         {...props}
         multiProjects={[]}
@@ -85,63 +114,65 @@ describe('ProjectSelector', function () {
           projects: [],
           access: ['project:write'],
         }}
-      />,
-      routerContext
+      />
     );
 
-    openMenu(wrapper);
-    expect(wrapper.find('EmptyMessage').prop('children')).toBe('You have no projects');
-    // Should not have "Create Project" button
-    expect(wrapper.find('CreateProjectButton')).toHaveLength(1);
+    await openMenu();
+    expect(screen.getByText('You have no projects')).toBeInTheDocument();
+    // Should have "Create Project" button
+    expect(screen.getByText('Create project')).toBeInTheDocument();
   });
 
-  it('lists projects and has filter', function () {
-    const wrapper = mountWithTheme(<ProjectSelector {...props} />, routerContext);
-    openMenu(wrapper);
+  it('lists projects and has filter', async function () {
+    renderWithTheme(<ProjectSelector {...props} />);
+    await openMenu();
 
-    expect(wrapper.find('AutoCompleteItem')).toHaveLength(2);
+    expect(screen.getByText(testProject.slug)).toBeInTheDocument();
+    expect(screen.getByText(anotherProject.slug)).toBeInTheDocument();
   });
 
-  it('can filter projects by project name', function () {
-    const wrapper = mountWithTheme(<ProjectSelector {...props} />, routerContext);
-    openMenu(wrapper);
+  it('can filter projects by project name', async function () {
+    renderWithTheme(<ProjectSelector {...props} />);
+    await openMenu();
 
-    wrapper.find('StyledInput').simulate('change', {target: {value: 'TEST'}});
+    screen.getByRole('textbox').focus();
+    await userEvent.keyboard('TEST');
 
-    const result = wrapper.find('AutoCompleteItem ProjectBadge');
-    expect(result).toHaveLength(1);
-    expect(result.prop('project').slug).toBe('test-project');
+    const item = screen.getByTestId('badge-display-name');
+    expect(item).toBeInTheDocument();
+    expect(item).toHaveTextContent(testProject.slug);
   });
 
   it('does not close dropdown when input is clicked', async function () {
-    const wrapper = mountWithTheme(<ProjectSelector {...props} />, routerContext);
-    openMenu(wrapper);
+    renderWithTheme(<ProjectSelector {...props} />);
+    await openMenu();
 
-    wrapper.find('StyledInput').simulate('click');
-    await tick();
-    wrapper.update();
-    expect(wrapper.find('DropdownMenu').prop('isOpen')).toBe(true);
+    await userEvent.click(screen.getByRole('textbox'));
+
+    // Dropdown should still be open - verify by checking if projects are still visible
+    expect(screen.getByText(testProject.slug)).toBeInTheDocument();
   });
 
-  it('closes dropdown when project is selected', function () {
-    const wrapper = mountWithTheme(<ProjectSelector {...props} />, routerContext);
-    openMenu(wrapper);
+  it('closes dropdown when project is selected', async function () {
+    renderWithTheme(<ProjectSelector {...props} />);
+    await openMenu();
 
     // Select first project
-    wrapper.find('AutoCompleteItem').first().simulate('click');
-    expect(wrapper.find('DropdownMenu').prop('isOpen')).toBe(false);
+    await userEvent.click(screen.getByText(testProject.slug));
+
+    // Dropdown should be closed - project should no longer be in the document
+    await waitFor(() => {
+      expect(screen.queryByText(testProject.slug)).not.toBeInTheDocument();
+    });
   });
 
-  it('calls callback when project is selected', function () {
+  it('calls callback when project is selected', async function () {
     const mock = jest.fn();
-    const wrapper = mountWithTheme(
-      <ProjectSelector {...props} onSelect={mock} />,
-      routerContext
-    );
-    openMenu(wrapper);
+    renderWithTheme(<ProjectSelector {...props} onSelect={mock} />);
+    await openMenu();
 
     // Select first project
-    wrapper.find('AutoCompleteItem').first().simulate('click');
+    await userEvent.click(screen.getByText(testProject.slug));
 
     expect(mock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -150,68 +181,68 @@ describe('ProjectSelector', function () {
     );
   });
 
-  it('shows empty filter message when filtering has no results', function () {
-    const wrapper = mountWithTheme(<ProjectSelector {...props} />, routerContext);
-    openMenu(wrapper);
+  it('shows empty filter message when filtering has no results', async function () {
+    renderWithTheme(<ProjectSelector {...props} />);
+    await openMenu();
 
-    wrapper.find('StyledInput').simulate('change', {target: {value: 'Foo'}});
-    expect(wrapper.find('EmptyMessage').prop('children')).toBe('No projects found');
+    screen.getByRole('textbox').focus();
+    await userEvent.keyboard('Foo');
+
+    expect(screen.queryByTestId('badge-display-name')).not.toBeInTheDocument();
+    expect(screen.getByText('No projects found')).toBeInTheDocument();
   });
 
-  it('does not call `onSelect` when using multi select', function () {
+  it('does not call `onSelect` when using multi select', async function () {
     const mock = jest.fn();
     const onMultiSelectMock = jest.fn();
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <ProjectSelector
         {...props}
         multi
         onSelect={mock}
         onMultiSelect={onMultiSelectMock}
-      />,
-      routerContext
+      />
     );
-    openMenu(wrapper);
+    await openMenu();
 
-    // Select first project
-    wrapper.find('CheckboxHitbox').first().simulate('click');
+    // Select first project checkbox
+    const checkboxes = screen.getAllByRole('checkbox');
+    await userEvent.click(checkboxes[0]);
 
     // onSelect callback should NOT be called
     expect(mock).not.toHaveBeenCalled();
     expect(onMultiSelectMock).toHaveBeenCalled();
   });
 
-  it('displays multi projects', function () {
+  it('displays multi projects', async function () {
     const project = TestStubs.Project();
     const multiProjectProps = {...props, multiProjects: [project]};
 
-    const wrapper = mountWithTheme(
-      <ProjectSelector {...multiProjectProps} />,
-      routerContext
-    );
-    openMenu(wrapper);
-    expect(wrapper.find('AutoCompleteItem')).toHaveLength(1);
-    expect(wrapper.text()).not.toContain("Projects I don't belong to");
+    renderWithTheme(<ProjectSelector {...multiProjectProps} />);
+    await openMenu();
+
+    expect(screen.getByText(project.slug)).toBeInTheDocument();
+    expect(screen.queryByText("Projects I don't belong to")).not.toBeInTheDocument();
   });
 
-  it('displays multi projects with non member projects', function () {
-    const project = TestStubs.Project({id: '1'});
-    const nonMemberProject = TestStubs.Project({id: '2'});
+  it('displays multi projects with non member projects', async function () {
+    const project = TestStubs.Project({id: '1', slug: 'member-project'});
+    const nonMemberProject = TestStubs.Project({id: '2', slug: 'non-member-project'});
     const multiProjectProps = {
       ...props,
       multiProjects: [project],
       nonMemberProjects: [nonMemberProject],
     };
 
-    const wrapper = mountWithTheme(
-      <ProjectSelector {...multiProjectProps} />,
-      routerContext
-    );
-    openMenu(wrapper);
-    expect(wrapper.text()).toContain("Projects I don't belong to");
-    expect(wrapper.find('AutoCompleteItem')).toHaveLength(2);
+    renderWithTheme(<ProjectSelector {...multiProjectProps} />);
+    await openMenu();
+
+    expect(screen.getByText("Projects I don't belong to")).toBeInTheDocument();
+    expect(screen.getByText(project.slug)).toBeInTheDocument();
+    expect(screen.getByText(nonMemberProject.slug)).toBeInTheDocument();
   });
 
-  it('displays projects in alphabetical order partitioned by project membership', function () {
+  it('displays projects in alphabetical order partitioned by project membership', async function () {
     const projectA = TestStubs.Project({id: '1', slug: 'a-project'});
     const projectB = TestStubs.Project({id: '2', slug: 'b-project'});
     const projectANonM = TestStubs.Project({id: '3', slug: 'a-non-m-project'});
@@ -224,20 +255,20 @@ describe('ProjectSelector', function () {
       selectedProjects: [],
     };
 
-    const wrapper = mountWithTheme(
-      <ProjectSelector {...multiProjectProps} />,
-      routerContext
-    );
-    openMenu(wrapper);
+    const {container} = renderWithTheme(<ProjectSelector {...multiProjectProps} />);
+    await openMenu();
 
-    const positionA = wrapper.text().indexOf(projectA.slug);
-    const positionB = wrapper.text().indexOf(projectB.slug);
+    const text = container.textContent || '';
+    const positionA = text.indexOf(projectA.slug);
+    const positionB = text.indexOf(projectB.slug);
+    const positionANonM = text.indexOf(projectANonM.slug);
+    const positionBNonM = text.indexOf(projectBNonM.slug);
 
-    const positionANonM = wrapper.text().indexOf(projectANonM.slug);
-    const positionBNonM = wrapper.text().indexOf(projectBNonM.slug);
-
-    expect(wrapper.text()).toContain("Projects I don't belong to");
-    expect(wrapper.find('AutoCompleteItem')).toHaveLength(4);
+    expect(screen.getByText("Projects I don't belong to")).toBeInTheDocument();
+    expect(screen.getByText(projectA.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectB.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectANonM.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectBNonM.slug)).toBeInTheDocument();
 
     [positionA, positionB, positionANonM, positionBNonM].forEach(position =>
       expect(position).toBeGreaterThan(-1)
@@ -248,7 +279,7 @@ describe('ProjectSelector', function () {
     expect(positionANonM).toBeLessThan(positionBNonM);
   });
 
-  it('displays multi projects in sort order rules: selected, bookmarked, alphabetical', function () {
+  it('displays multi projects in sort order rules: selected, bookmarked, alphabetical', async function () {
     const projectA = TestStubs.Project({id: '1', slug: 'a-project'});
     const projectBBookmarked = TestStubs.Project({
       id: '2',
@@ -294,23 +325,28 @@ describe('ProjectSelector', function () {
       ],
     };
 
-    const wrapper = mountWithTheme(
-      <ProjectSelector {...multiProjectProps} />,
-      routerContext
-    );
-    openMenu(wrapper);
+    const {container} = renderWithTheme(<ProjectSelector {...multiProjectProps} />);
+    await openMenu();
 
-    const positionA = wrapper.text().indexOf(projectA.slug);
-    const positionB = wrapper.text().indexOf(projectBBookmarked.slug);
-    const positionC = wrapper.text().indexOf(projectCBookmarked.slug);
-    const positionD = wrapper.text().indexOf(projectDSelected.slug);
-    const positionE = wrapper.text().indexOf(projectESelected.slug);
-    const positionF = wrapper.text().indexOf(projectFSelectedBookmarked.slug);
-    const positionG = wrapper.text().indexOf(projectGSelectedBookmarked.slug);
-    const positionH = wrapper.text().indexOf(projectH.slug);
+    const text = container.textContent || '';
+    const positionA = text.indexOf(projectA.slug);
+    const positionB = text.indexOf(projectBBookmarked.slug);
+    const positionC = text.indexOf(projectCBookmarked.slug);
+    const positionD = text.indexOf(projectDSelected.slug);
+    const positionE = text.indexOf(projectESelected.slug);
+    const positionF = text.indexOf(projectFSelectedBookmarked.slug);
+    const positionG = text.indexOf(projectGSelectedBookmarked.slug);
+    const positionH = text.indexOf(projectH.slug);
 
-    expect(wrapper.text()).not.toContain("Projects I don't belong to");
-    expect(wrapper.find('AutoCompleteItem')).toHaveLength(8);
+    expect(screen.queryByText("Projects I don't belong to")).not.toBeInTheDocument();
+    expect(screen.getByText(projectA.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectBBookmarked.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectCBookmarked.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectDSelected.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectESelected.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectFSelectedBookmarked.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectGSelectedBookmarked.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectH.slug)).toBeInTheDocument();
 
     [
       positionA,
@@ -332,7 +368,7 @@ describe('ProjectSelector', function () {
     expect(positionA).toBeLessThan(positionH);
   });
 
-  it('displays non member projects in alphabetical sort order', function () {
+  it('displays non member projects in alphabetical sort order', async function () {
     const projectA = TestStubs.Project({id: '1', slug: 'a-project'});
     const projectBBookmarked = TestStubs.Project({
       id: '2',
@@ -358,19 +394,20 @@ describe('ProjectSelector', function () {
       selectedProjects: [projectCSelected, projectDSelectedBookmarked],
     };
 
-    const wrapper = mountWithTheme(
-      <ProjectSelector {...multiProjectProps} />,
-      routerContext
-    );
-    openMenu(wrapper);
+    const {container} = renderWithTheme(<ProjectSelector {...multiProjectProps} />);
+    await openMenu();
 
-    const positionA = wrapper.text().indexOf(projectA.slug);
-    const positionB = wrapper.text().indexOf(projectBBookmarked.slug);
-    const positionC = wrapper.text().indexOf(projectCSelected.slug);
-    const positionD = wrapper.text().indexOf(projectDSelectedBookmarked.slug);
+    const text = container.textContent || '';
+    const positionA = text.indexOf(projectA.slug);
+    const positionB = text.indexOf(projectBBookmarked.slug);
+    const positionC = text.indexOf(projectCSelected.slug);
+    const positionD = text.indexOf(projectDSelectedBookmarked.slug);
 
-    expect(wrapper.text()).toContain("Projects I don't belong to");
-    expect(wrapper.find('AutoCompleteItem')).toHaveLength(4);
+    expect(screen.getByText("Projects I don't belong to")).toBeInTheDocument();
+    expect(screen.getByText(projectA.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectBBookmarked.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectCSelected.slug)).toBeInTheDocument();
+    expect(screen.getByText(projectDSelectedBookmarked.slug)).toBeInTheDocument();
 
     [positionA, positionB, positionC, positionD].forEach(position =>
       expect(position).toBeGreaterThan(-1)

@@ -1,6 +1,10 @@
 import React from 'react';
 
-import {mountWithTheme, shallow} from 'sentry-test/enzyme';
+import {
+  fireEvent,
+  renderWithTheme,
+  screen,
+} from 'sentry-test/reactTestingLibrary';
 
 import RangeSlider from 'app/views/settings/components/forms/controls/rangeSlider';
 
@@ -10,48 +14,70 @@ describe('RangeSlider', function () {
   );
 
   it('changes value', function () {
-    const wrapper = shallow(creator());
-    expect(wrapper.state('sliderValue')).toBe(5);
-    wrapper.find('Slider').simulate('input', {target: {value: 7}});
-    expect(wrapper.state('sliderValue')).toBe(7);
+    const {container} = renderWithTheme(creator());
+    const slider = container.querySelector('input[type="range"]');
+
+    // Initial label should show value 5
+    expect(screen.getByText('5')).toBeInTheDocument();
+
+    // Change slider value
+    fireEvent.input(slider, {target: {value: '7'}});
+
+    // Label should update to 7
+    expect(screen.getByText('7')).toBeInTheDocument();
   });
 
   it('has right label', function () {
-    const wrapper = mountWithTheme(creator());
-    expect(wrapper.find('Label').text()).toBe('5');
-    wrapper.find('Slider').simulate('input', {target: {value: 7}});
-    expect(wrapper.find('Label').text()).toBe('7');
+    const {container} = renderWithTheme(creator());
+    const slider = container.querySelector('input[type="range"]');
+
+    expect(screen.getByText('5')).toBeInTheDocument();
+
+    fireEvent.input(slider, {target: {value: '7'}});
+
+    expect(screen.getByText('7')).toBeInTheDocument();
   });
 
   it('can use formatLabel', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       creator({
         formatLabel: value => (
           <div className="test">{value === 7 ? 'SEVEN!' : value + 1}</div>
         ),
       })
     );
-    expect(wrapper.find('.test')).toHaveLength(1);
-    expect(wrapper.find('.test').text()).toBe('6');
-    wrapper.find('Slider').simulate('input', {target: {value: 7}});
-    expect(wrapper.find('.test').text()).toBe('SEVEN!');
+
+    const slider = container.querySelector('input[type="range"]');
+    const formattedLabel = container.querySelector('.test');
+
+    expect(formattedLabel).toBeInTheDocument();
+    expect(formattedLabel).toHaveTextContent('6');
+
+    fireEvent.input(slider, {target: {value: '7'}});
+
+    expect(formattedLabel).toHaveTextContent('SEVEN!');
   });
 
   it('calls onChange', function () {
     const onChange = jest.fn();
-    const wrapper = shallow(
+    const {container} = renderWithTheme(
       creator({
         onChange,
       })
     );
+
+    const slider = container.querySelector('input[type="range"]');
+
     expect(onChange).not.toHaveBeenCalled();
-    wrapper.find('Slider').simulate('input', {target: {value: 7}});
+
+    fireEvent.input(slider, {target: {value: '7'}});
+
     expect(onChange).toHaveBeenCalledWith(7, expect.anything());
   });
 
   it('can provide a list of allowedValues', function () {
     const onChange = jest.fn();
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       creator({
         // support unsorted arrays?
         allowedValues: [0, 100, 1000, 10000, 20000],
@@ -60,13 +86,15 @@ describe('RangeSlider', function () {
       })
     );
 
-    // With `allowedValues` sliderValue will be the index to value in `allowedValues`
-    expect(wrapper.state('sliderValue')).toBe(2);
-    expect(wrapper.find('Label').text()).toBe('1000');
+    const slider = container.querySelector('input[type="range"]');
 
-    wrapper.find('Slider').simulate('input', {target: {value: 0}});
-    expect(wrapper.state('sliderValue')).toBe(0);
-    expect(wrapper.find('Label').text()).toBe('0');
+    // With `allowedValues` sliderValue will be the index to value in `allowedValues`
+    // The displayed label should show the actual value (1000)
+    expect(screen.getByText('1000')).toBeInTheDocument();
+
+    fireEvent.input(slider, {target: {value: '0'}});
+
+    expect(screen.getByText('0')).toBeInTheDocument();
 
     // onChange will callback with a value from `allowedValues`
     expect(onChange).toHaveBeenCalledWith(0, expect.anything());
@@ -74,7 +102,7 @@ describe('RangeSlider', function () {
 
   it('handles invalid values', function () {
     const onChange = jest.fn();
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       creator({
         // support unsorted arrays?
         allowedValues: [0, 100, 1000, 10000, 20000],
@@ -83,9 +111,11 @@ describe('RangeSlider', function () {
       })
     );
 
-    wrapper.find('Slider').simulate('input', {target: {value: -1}});
-    expect(wrapper.state('sliderValue')).toBe(-1);
-    expect(wrapper.find('Label').text()).toBe('Invalid value');
+    const slider = container.querySelector('input[type="range"]');
+
+    fireEvent.input(slider, {target: {value: '-1'}});
+
+    expect(screen.getByText('Invalid value')).toBeInTheDocument();
 
     // onChange will callback with a value from `allowedValues`
     expect(onChange).toHaveBeenCalledWith(undefined, expect.anything());

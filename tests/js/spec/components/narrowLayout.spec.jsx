@@ -1,8 +1,33 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import NarrowLayout from 'app/components/narrowLayout';
+
+// Mock document.createRange which is used by userEvent
+document.createRange = () => {
+  const range = {
+    setStart: jest.fn(),
+    setEnd: jest.fn(),
+    commonAncestorContainer: {
+      nodeName: 'BODY',
+      ownerDocument: document,
+    },
+    getBoundingClientRect: jest.fn(() => ({
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+    })),
+    getClientRects: jest.fn(() => []),
+    cloneRange: jest.fn(function () {
+      return this;
+    }),
+  };
+  return range;
+};
 
 describe('NarrowLayout', function () {
   beforeAll(function () {
@@ -13,24 +38,24 @@ describe('NarrowLayout', function () {
   });
 
   it('renders without logout', function () {
-    const wrapper = mountWithTheme(<NarrowLayout />);
-    expect(wrapper.find('a.logout')).toHaveLength(0);
+    renderWithTheme(<NarrowLayout />);
+    expect(screen.queryByText('Sign out')).not.toBeInTheDocument();
   });
 
   it('renders with logout', function () {
-    const wrapper = mountWithTheme(<NarrowLayout showLogout />);
-    expect(wrapper.find('a.logout')).toHaveLength(1);
+    renderWithTheme(<NarrowLayout showLogout />);
+    expect(screen.getByText('Sign out')).toBeInTheDocument();
   });
 
-  it('can logout', function () {
+  it('can logout', async function () {
     const mock = MockApiClient.addMockResponse({
       url: '/auth/',
       method: 'DELETE',
       status: 204,
     });
-    const wrapper = mountWithTheme(<NarrowLayout showLogout />);
+    renderWithTheme(<NarrowLayout showLogout />);
 
-    wrapper.find('a.logout').simulate('click');
+    await userEvent.click(screen.getByText('Sign out'));
     expect(mock).toHaveBeenCalled();
   });
 });

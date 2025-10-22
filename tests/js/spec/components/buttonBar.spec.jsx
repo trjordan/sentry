@@ -1,13 +1,13 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import Button from 'app/components/button';
 import ButtonBar from 'app/components/buttonBar';
 
 describe('ButtonBar', function () {
   const createWrapper = () =>
-    mountWithTheme(
+    renderWithTheme(
       <ButtonBar active="2" merged>
         <Button barId="1">First Button</Button>
         <Button barId="2">Second Button</Button>
@@ -17,12 +17,14 @@ describe('ButtonBar', function () {
     );
 
   it('has "Second Button" as the active button in the bar', function () {
-    const wrapper = createWrapper();
-    expect(wrapper.find('Button').at(1).prop('priority')).toBe('primary');
+    createWrapper();
+    const secondButton = screen.getByRole('button', {name: 'Second Button'});
+    expect(secondButton).toHaveClass('active');
   });
 
   it('does not pass `barId` down to the button', function () {
-    const wrapper = createWrapper();
-    expect(wrapper.find('Button').at(1).prop('barId')).toBeUndefined();
+    createWrapper();
+    const secondButton = screen.getByRole('button', {name: 'Second Button'});
+    expect(secondButton).not.toHaveAttribute('barId');
   });
 });

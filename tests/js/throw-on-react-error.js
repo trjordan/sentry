@@ -15,6 +15,11 @@ const IGNORED_ERRORS = [
     ),
   message =>
     typeof message === 'string' && message.includes('HTMLMediaElement.prototype.play'),
+  message =>
+    typeof message === 'string' &&
+    message.includes(
+      "Warning: Can't perform a React state update on an unmounted component"
+    ),
 ];
 
 // This is needed because when we throw the captured error message, it will

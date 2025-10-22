@@ -77,7 +77,7 @@ class SearchDropdown extends React.PureComponent<Props> {
   render() {
     const {className, loading, items} = this.props;
     return (
-      <StyledSearchDropdown className={className}>
+      <StyledSearchDropdown className={className} data-test-id="search-autocomplete-dropdown">
         {loading ? (
           <LoadingWrapper key="loading" data-test-id="search-autocomplete-loading">
             <LoadingIndicator mini />

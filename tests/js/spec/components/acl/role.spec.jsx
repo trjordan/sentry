@@ -1,7 +1,7 @@
 import React from 'react';
 import Cookies from 'js-cookie';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import Role from 'app/components/acl/role';
 import ConfigStore from 'app/stores/configStore';
@@ -28,11 +28,13 @@ describe('Role', function () {
       },
     ],
   });
-  const routerContext = TestStubs.routerContext([
-    {
-      organization,
-    },
-  ]);
+
+  beforeEach(function () {
+    ConfigStore.init();
+    ConfigStore.config = {
+      user: {isSuperuser: false},
+    };
+  });
 
   describe('as render prop', function () {
     const childrenMock = jest.fn().mockReturnValue(null);
@@ -41,7 +43,11 @@ describe('Role', function () {
     });
 
     it('has a sufficient role', function () {
-      mountWithTheme(<Role role="admin">{childrenMock}</Role>, routerContext);
+      renderWithTheme(
+        <Role organization={organization} role="admin">
+          {childrenMock}
+        </Role>
+      );
 
       expect(childrenMock).toHaveBeenCalledWith({
         hasRole: true,
@@ -49,7 +55,11 @@ describe('Role', function () {
     });
 
     it('has an unsufficient role', function () {
-      mountWithTheme(<Role role="manager">{childrenMock}</Role>, routerContext);
+      renderWithTheme(
+        <Role organization={organization} role="manager">
+          {childrenMock}
+        </Role>
+      );
 
       expect(childrenMock).toHaveBeenCalledWith({
         hasRole: false,
@@ -60,7 +70,11 @@ describe('Role', function () {
       ConfigStore.config.user = {isSuperuser: true};
       Cookies.set = jest.fn();
 
-      mountWithTheme(<Role role="owner">{childrenMock}</Role>, routerContext);
+      renderWithTheme(
+        <Role organization={organization} role="owner">
+          {childrenMock}
+        </Role>
+      );
 
       expect(childrenMock).toHaveBeenCalledWith({
         hasRole: true,
@@ -70,7 +84,11 @@ describe('Role', function () {
     });
 
     it('does not give access to a made up role', function () {
-      mountWithTheme(<Role role="abcdefg">{childrenMock}</Role>, routerContext);
+      renderWithTheme(
+        <Role organization={organization} role="abcdefg">
+          {childrenMock}
+        </Role>
+      );
 
       expect(childrenMock).toHaveBeenCalledWith({
         hasRole: false,
@@ -80,7 +98,11 @@ describe('Role', function () {
     it('handles no user', function () {
       const user = {...ConfigStore.config.user};
       ConfigStore.config.user = undefined;
-      mountWithTheme(<Role role="member">{childrenMock}</Role>, routerContext);
+      renderWithTheme(
+        <Role organization={organization} role="member">
+          {childrenMock}
+        </Role>
+      );
 
       expect(childrenMock).toHaveBeenCalledWith({
         hasRole: false,
@@ -89,11 +111,10 @@ describe('Role', function () {
     });
 
     it('handles no availableRoles', function () {
-      mountWithTheme(
+      renderWithTheme(
         <Role role="member" organization={{...organization, availableRoles: undefined}}>
           {childrenMock}
-        </Role>,
-        routerContext
+        </Role>
       );
 
       expect(childrenMock).toHaveBeenCalledWith({
@@ -104,25 +125,23 @@ describe('Role', function () {
 
   describe('as React node', function () {
     it('has a sufficient role', function () {
-      const wrapper = mountWithTheme(
-        <Role role="member">
+      renderWithTheme(
+        <Role organization={organization} role="member">
           <div>The Child</div>
-        </Role>,
-        routerContext
+        </Role>
       );
 
-      expect(wrapper.find('Role div').exists()).toBeTruthy();
+      expect(screen.getByText('The Child')).toBeInTheDocument();
     });
 
     it('has an unsufficient role', function () {
-      const wrapper = mountWithTheme(
-        <Role role="owner">
+      renderWithTheme(
+        <Role organization={organization} role="owner">
           <div>The Child</div>
-        </Role>,
-        routerContext
+        </Role>
       );
 
-      expect(wrapper.find('Role div').exists()).toBeFalsy();
+      expect(screen.queryByText('The Child')).not.toBeInTheDocument();
     });
   });
 });

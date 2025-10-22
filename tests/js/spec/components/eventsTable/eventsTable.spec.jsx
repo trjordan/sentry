@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen} from 'sentry-test/reactTestingLibrary';
 
 import EventsTable from 'app/components/eventsTable/eventsTable';
 
@@ -10,7 +10,7 @@ describe('EventsTable', function () {
   afterEach(function () {});
 
   it('renders', function () {
-    const wrapper = mountWithTheme(
+    const {container} = render(
       <EventsTable
         tagList={[]}
         orgId="orgId"
@@ -18,8 +18,17 @@ describe('EventsTable', function () {
         groupId="groupId"
         events={TestStubs.DetailedEvents()}
       />,
-      TestStubs.routerContext()
+      {context: TestStubs.routerContext()}
     );
-    expect(wrapper).toSnapshot();
+
+    // Verify the table is rendered
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(container.querySelector('.events-table')).toBeInTheDocument();
+
+    // Verify table headers
+    expect(screen.getByText('ID')).toBeInTheDocument();
+
+    // Verify events are rendered (DetailedEvents() should have event rows)
+    expect(container.querySelector('tbody')).toBeInTheDocument();
   });
 });

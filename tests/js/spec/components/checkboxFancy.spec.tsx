@@ -1,33 +1,42 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import CheckboxFancy from 'app/components/checkboxFancy/checkboxFancy';
 
 describe('CheckboxFancy', function () {
   it('renders', function () {
-    const wrapper = mountWithTheme(<CheckboxFancy />);
-    expect(wrapper).toSnapshot();
+    const {container} = renderWithTheme(<CheckboxFancy />);
+    expect(
+      container.querySelector('[data-test-id="checkbox-fancy"]')
+    ).toBeInTheDocument();
   });
 
   it('isChecked', function () {
-    const wrapper = mountWithTheme(<CheckboxFancy isChecked />);
-    expect(wrapper.props().isChecked).toEqual(true);
-    expect(wrapper.find('[data-test-id="icon-check-mark"]').exists()).toEqual(true);
-    expect(wrapper.find('[data-test-id="icon-subtract"]').exists()).toEqual(false);
+    const {container} = renderWithTheme(<CheckboxFancy isChecked />);
+    expect(
+      container.querySelector('[data-test-id="icon-check-mark"]')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-test-id="icon-subtract"]')
+    ).not.toBeInTheDocument();
   });
 
   it('isIndeterminate', function () {
-    const wrapper = mountWithTheme(<CheckboxFancy isIndeterminate />);
-    expect(wrapper.props().isIndeterminate).toEqual(true);
-    expect(wrapper.find('[data-test-id="icon-check-mark"]').exists()).toEqual(false);
-    expect(wrapper.find('[data-test-id="icon-subtract"]').exists()).toEqual(true);
+    const {container} = renderWithTheme(<CheckboxFancy isIndeterminate />);
+    expect(
+      container.querySelector('[data-test-id="icon-check-mark"]')
+    ).not.toBeInTheDocument();
+    expect(container.querySelector('[data-test-id="icon-subtract"]')).toBeInTheDocument();
   });
 
   it('isDisabled', function () {
-    const wrapper = mountWithTheme(<CheckboxFancy isDisabled />);
-    expect(wrapper.props().isDisabled).toEqual(true);
-    expect(wrapper.find('[data-test-id="icon-check-mark"]').exists()).toEqual(false);
-    expect(wrapper.find('[data-test-id="icon-subtract"]').exists()).toEqual(false);
+    const {container} = renderWithTheme(<CheckboxFancy isDisabled />);
+    expect(
+      container.querySelector('[data-test-id="icon-check-mark"]')
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector('[data-test-id="icon-subtract"]')
+    ).not.toBeInTheDocument();
   });
 });

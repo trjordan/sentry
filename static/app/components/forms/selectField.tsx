@@ -107,6 +107,7 @@ export default class SelectField extends FormField<Props> {
       required,
       name,
       isLoading,
+      label,
     } = this.props;
 
     return (
@@ -124,6 +125,7 @@ export default class SelectField extends FormField<Props> {
         multiple={this.isMultiple()}
         name={name}
         isLoading={isLoading}
+        aria-label={label || name}
       />
     );
   }

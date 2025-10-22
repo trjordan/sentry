@@ -1,11 +1,11 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import ProcessingIssueList from 'app/components/stream/processingIssueList';
 
 describe('ProcessingIssueList', function () {
-  let wrapper, projects, organization, fetchIssueRequest;
+  let projectIds, organization, fetchIssueRequest;
 
   beforeEach(function () {
     fetchIssueRequest = MockApiClient.addMockResponse({
@@ -27,45 +27,53 @@ describe('ProcessingIssueList', function () {
       ],
     });
     organization = TestStubs.Organization();
-    projects = [1, 2];
+    projectIds = ['1', '2'];
   });
 
   describe('componentDidMount', function () {
-    let instance;
-    beforeEach(async function () {
-      wrapper = mountWithTheme(
-        <ProcessingIssueList organization={organization} projects={projects} />
+    beforeEach(function () {
+      renderWithTheme(
+        <ProcessingIssueList organization={organization} projectIds={projectIds} />
       );
-      instance = wrapper.instance();
-      await instance.componentDidMount();
     });
 
-    it('fetches issues', function () {
-      expect(instance.state.issues).toBeTruthy();
-      expect(fetchIssueRequest).toHaveBeenCalled();
+    it('fetches issues', async function () {
+      await waitFor(() => {
+        expect(fetchIssueRequest).toHaveBeenCalled();
+      });
+
+      // Verify issues are rendered (indicating state was populated)
+      expect(screen.getAllByText(/issue blocking/i).length).toBeGreaterThan(0);
     });
   });
 
   describe('render', function () {
-    beforeEach(async function () {
-      wrapper = mountWithTheme(
+    beforeEach(function () {
+      renderWithTheme(
         <ProcessingIssueList
           organization={organization}
-          projects={projects}
+          projectIds={projectIds}
           showProject
         />
       );
-      await wrapper.instance().componentDidMount();
-      await wrapper.update();
     });
 
-    it('renders multiple issues', function () {
-      expect(wrapper.find('ProcessingIssueHint')).toHaveLength(2);
+    it('renders multiple issues', async function () {
+      // Wait for the issues to be fetched and rendered
+      await waitFor(() => {
+        expect(screen.getAllByText(/issue blocking/i)).toHaveLength(2);
+      });
     });
 
-    it('forwards the showProject prop', function () {
-      const hint = wrapper.find('ProcessingIssueHint').first();
-      expect(hint.props().showProject).toBeTruthy();
+    it('forwards the showProject prop', async function () {
+      // Wait for issues to render
+      await waitFor(() => {
+        expect(screen.getByText('test-project')).toBeInTheDocument();
+      });
+
+      // Verify that project names are shown (showProject was forwarded)
+      expect(screen.getByText('test-project')).toBeInTheDocument();
+      expect(screen.getByText('other-project')).toBeInTheDocument();
     });
   });
 });

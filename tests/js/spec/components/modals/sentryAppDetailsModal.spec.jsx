@@ -1,29 +1,31 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
 
 import SentryAppDetailsModal from 'app/components/modals/sentryAppDetailsModal';
 
 describe('SentryAppDetailsModal', function () {
-  let wrapper;
   let org;
   let sentryApp;
   let onInstall;
   let isInstalled;
   let closeModal;
-  const installButton = 'Button[data-test-id="install"]';
   let sentryAppInteractionRequest;
 
   function render() {
-    return mountWithTheme(
+    return renderWithTheme(
       <SentryAppDetailsModal
         sentryApp={sentryApp}
         organization={org}
         onInstall={onInstall}
         isInstalled={isInstalled}
         closeModal={closeModal}
-      />,
-      TestStubs.routerContext()
+      />
     );
   }
 
@@ -46,15 +48,17 @@ describe('SentryAppDetailsModal', function () {
       statusCode: 200,
       body: {},
     });
-
-    wrapper = render();
   });
 
-  it('renders', () => {
-    expect(wrapper.find('Name').text()).toBe(sentryApp.name);
+  it('renders', async () => {
+    render();
+    await waitFor(() => {
+      expect(screen.getByText(sentryApp.name)).toBeInTheDocument();
+    });
   });
 
   it('records interaction request', () => {
+    render();
     expect(sentryAppInteractionRequest).toHaveBeenCalledWith(
       `/sentry-apps/${sentryApp.slug}/interaction/`,
       expect.objectContaining({
@@ -66,50 +70,62 @@ describe('SentryAppDetailsModal', function () {
     );
   });
 
-  it('displays the Integrations description', () => {
-    expect(wrapper.find('Description').text()).toContain(sentryApp.overview);
+  it('displays the Integrations description', async () => {
+    render();
+    await waitFor(() => {
+      expect(screen.getByText(sentryApp.overview)).toBeInTheDocument();
+    });
   });
 
-  it('closes when Cancel is clicked', () => {
-    wrapper.find({onClick: closeModal}).first().simulate('click');
+  it('closes when Cancel is clicked', async () => {
+    render();
+    await userEvent.click(screen.getByRole('button', {name: 'Cancel'}));
     expect(closeModal).toHaveBeenCalled();
   });
 
-  it('installs the Integration when Install is clicked', () => {
-    wrapper.find(installButton).simulate('click');
+  it('installs the Integration when Install is clicked', async () => {
+    render();
+    await userEvent.click(screen.getByRole('button', {name: 'Accept & Install'}));
     expect(onInstall).toHaveBeenCalled();
   });
 
   describe('when the User does not have permission to install Integrations', () => {
     beforeEach(() => {
       org = {...org, access: []};
-      wrapper = render();
     });
 
     it('does not display the Install button', () => {
-      expect(wrapper.find(installButton).length).toBe(0);
+      render();
+      expect(
+        screen.queryByRole('button', {name: 'Accept & Install'})
+      ).not.toBeInTheDocument();
     });
   });
 
   describe('when the Integration is installed', () => {
     beforeEach(() => {
       isInstalled = true;
-      wrapper = render();
     });
 
     it('disabled the Install button', () => {
-      expect(wrapper.find(installButton).prop('disabled')).toBe(true);
+      render();
+      expect(screen.getByRole('button', {name: 'Accept & Install'})).toHaveAttribute(
+        'aria-disabled',
+        'true'
+      );
     });
   });
 
   describe('when the Integration requires no permissions', () => {
     beforeEach(() => {
       sentryApp = {...sentryApp, scopes: []};
-      wrapper = render();
     });
 
-    it('does not render permissions', () => {
-      expect(wrapper.exists('Title')).toBe(false);
+    it('does not render permissions', async () => {
+      render();
+      await waitFor(() => {
+        expect(screen.queryByText('Permissions')).not.toBeInTheDocument();
+      });
     });
   });
 });

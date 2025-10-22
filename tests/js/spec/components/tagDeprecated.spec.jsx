@@ -1,16 +1,16 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import Tag from 'app/components/tagDeprecated';
 
 describe('Tag', function () {
   it('renders', function () {
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <Tag priority="info" border size="small">
         Text to Copy
       </Tag>
     );
-    expect(wrapper).toSnapshot();
+    expect(screen.getByText('Text to Copy')).toBeInTheDocument();
   });
 });

@@ -1,6 +1,11 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
 
 import {createTeam} from 'app/actionCreators/teams';
 import CreateTeamModal from 'app/components/modals/createTeamModal';
@@ -23,7 +28,8 @@ describe('CreateTeamModal', function () {
   afterEach(function () {});
 
   it('calls createTeam action creator on submit', async function () {
-    const wrapper = mountWithTheme(
+    const routerContext = TestStubs.routerContext();
+    renderWithTheme(
       <CreateTeamModal
         Body={p => p.children}
         Header={p => p.children}
@@ -32,18 +38,19 @@ describe('CreateTeamModal', function () {
         onClose={onClose}
         onSuccess={onSuccess}
       />,
-      TestStubs.routerContext()
+      routerContext
     );
 
-    wrapper
-      .find('CreateTeamForm Input[name="slug"]')
-      .simulate('change', {e: {target: {value: 'new-team'}}});
+    const input = screen.getByRole('textbox', {name: /team name/i});
+    await userEvent.type(input, 'new-team');
 
-    wrapper.find('CreateTeamForm Form').simulate('submit');
+    const submitButton = screen.getByRole('button', {name: /create team/i});
+    await userEvent.click(submitButton);
 
     expect(createTeam).toHaveBeenCalledTimes(1);
-    await tick();
-    expect(onClose).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+    });
     expect(closeModal).toHaveBeenCalled();
     expect(onSuccess).toHaveBeenCalledTimes(1);
   });

@@ -1,12 +1,16 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {selectByValue} from 'sentry-test/select-new';
+import {
+  fireEvent,
+  renderWithTheme,
+  screen,
+  userEvent,
+} from 'sentry-test/reactTestingLibrary';
 
 import SentryProjectSelectorField from 'app/views/settings/components/forms/sentryProjectSelectorField';
 
 describe('SentryProjectSelectorField', () => {
-  it('can change values', () => {
+  it('can change values', async () => {
     const mock = jest.fn();
     const projects = [
       TestStubs.Project(),
@@ -16,11 +20,26 @@ describe('SentryProjectSelectorField', () => {
         name: 'My Proj',
       }),
     ];
-    const wrapper = mountWithTheme(
-      <SentryProjectSelectorField onChange={mock} name="project" projects={projects} />
+    renderWithTheme(
+      <SentryProjectSelectorField
+        onChange={mock}
+        name="project"
+        label="Project"
+        projects={projects}
+      />
     );
 
-    selectByValue(wrapper, '23', {control: true});
+    // React-select adds a textbox inside with the label from the field
+    const selectInput = screen.getByRole('textbox', {name: 'Project'});
+
+    // Use fireEvent for the menu to open (userEvent may not trigger the menu properly)
+    fireEvent.focus(selectInput);
+    fireEvent.keyDown(selectInput, {key: 'ArrowDown', code: 'ArrowDown'});
+
+    // The option text is rendered within a badge component
+    const option = await screen.findByText('my-proj');
+    await userEvent.click(option);
+
     expect(mock).toHaveBeenCalledWith('23', expect.anything());
   });
 });

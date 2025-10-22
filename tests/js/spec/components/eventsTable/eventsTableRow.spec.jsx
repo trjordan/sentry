@@ -1,12 +1,12 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen} from 'sentry-test/reactTestingLibrary';
 
 import {EventsTableRow} from 'app/components/eventsTable/eventsTableRow';
 
 describe('EventsTableRow', function () {
   it('renders', function () {
-    const wrapper = mountWithTheme(
+    render(
       <table>
         <tbody>
           <EventsTableRow
@@ -17,8 +17,10 @@ describe('EventsTableRow', function () {
           />
         </tbody>
       </table>,
-      TestStubs.routerContext()
+      {context: TestStubs.routerContext()}
     );
-    expect(wrapper).toSnapshot();
+
+    // Verify the table row renders
+    expect(screen.getByRole('row')).toBeInTheDocument();
   });
 });

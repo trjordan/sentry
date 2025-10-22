@@ -1,98 +1,139 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {changeInputValue, openMenu} from 'sentry-test/select-new';
+import {
+  fireEvent,
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
 
 import {Form, SelectCreatableField} from 'app/components/forms';
 
 describe('SelectCreatableField', function () {
-  it('can add user input into select field when using options', function () {
-    const wrapper = mountWithTheme(
+  it('can add user input into select field when using options', async function () {
+    const {container} = renderWithTheme(
       <SelectCreatableField options={[{value: 'foo', label: 'Foo'}]} name="fieldName" />
     );
 
-    const input = wrapper.find('SelectControl input[type="text"]');
-    changeInputValue(input, 'bar');
-    wrapper.update();
+    // react-select renders the input as a textbox, and without a label it has no accessible name
+    const selectInput = container.querySelector(
+      'input[id^="react-select-"][id$="-input"]'
+    );
+    await userEvent.type(selectInput, 'bar');
 
     // Text is in input
-    expect(wrapper.find('SelectControl input[type="text"]').props().value).toBe('bar');
+    expect(selectInput).toHaveValue('bar');
 
     // Click on create option
-    openMenu(wrapper, {control: true});
-    wrapper.find('SelectControl Option div').simulate('click');
+    await waitFor(() => {
+      expect(screen.getByText(/Create "bar"/i)).toBeInTheDocument();
+    });
+    const createOption = screen.getByText(/Create "bar"/i);
+    await userEvent.click(createOption);
 
     // Is active hidden input value
-    expect(wrapper.find('SelectControl input[type="hidden"]').props().value).toEqual(
-      'bar'
-    );
+    await waitFor(() => {
+      const hiddenInput = container.querySelector(
+        'input[type="hidden"][name="fieldName"]'
+      );
+      expect(hiddenInput).toHaveValue('bar');
+    });
   });
 
-  it('can add user input into select field when using choices', function () {
-    const wrapper = mountWithTheme(
+  it('can add user input into select field when using choices', async function () {
+    const {container} = renderWithTheme(
       <SelectCreatableField choices={['foo']} name="fieldName" />
     );
 
-    const input = wrapper.find('SelectControl input[type="text"]');
-    changeInputValue(input, 'bar');
-    wrapper.update();
+    // react-select renders the input as a textbox, and without a label it has no accessible name
+    const selectInput = container.querySelector(
+      'input[id^="react-select-"][id$="-input"]'
+    );
+    await userEvent.type(selectInput, 'bar');
 
     // Text is in input
-    expect(wrapper.find('SelectControl input[type="text"]').props().value).toBe('bar');
+    expect(selectInput).toHaveValue('bar');
 
     // Click on create option
-    openMenu(wrapper, {control: true});
-    wrapper.find('SelectControl Option div').simulate('click');
+    await waitFor(() => {
+      expect(screen.getByText(/Create "bar"/i)).toBeInTheDocument();
+    });
+    const createOption = screen.getByText(/Create "bar"/i);
+    await userEvent.click(createOption);
 
     // Is active hidden input value
-    expect(wrapper.find('SelectControl input[type="hidden"]').props().value).toEqual(
-      'bar'
-    );
+    await waitFor(() => {
+      const hiddenInput = container.querySelector(
+        'input[type="hidden"][name="fieldName"]'
+      );
+      expect(hiddenInput).toHaveValue('bar');
+    });
   });
 
-  it('can add user input into select field when using paired choices', function () {
-    const wrapper = mountWithTheme(
+  it('can add user input into select field when using paired choices', async function () {
+    const {container} = renderWithTheme(
       <SelectCreatableField choices={[['foo', 'foo']]} name="fieldName" />
     );
 
-    const input = wrapper.find('SelectControl input[type="text"]');
-    changeInputValue(input, 'bar');
-    wrapper.update();
+    // react-select renders the input as a textbox, and without a label it has no accessible name
+    const selectInput = container.querySelector(
+      'input[id^="react-select-"][id$="-input"]'
+    );
+    await userEvent.type(selectInput, 'bar');
 
     // Text is in input
-    expect(wrapper.find('SelectControl input[type="text"]').props().value).toBe('bar');
+    expect(selectInput).toHaveValue('bar');
 
     // Click on create option
-    openMenu(wrapper, {control: true});
-    wrapper.find('SelectControl Option div').simulate('click');
+    await waitFor(() => {
+      expect(screen.getByText(/Create "bar"/i)).toBeInTheDocument();
+    });
+    const createOption = screen.getByText(/Create "bar"/i);
+    await userEvent.click(createOption);
 
     // Is active hidden input value
-    expect(wrapper.find('SelectControl input[type="hidden"]').props().value).toEqual(
-      'bar'
-    );
+    await waitFor(() => {
+      const hiddenInput = container.querySelector(
+        'input[type="hidden"][name="fieldName"]'
+      );
+      expect(hiddenInput).toHaveValue('bar');
+    });
   });
 
-  it('with Form context', function () {
+  it('with Form context', async function () {
     const submitMock = jest.fn();
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <Form onSubmit={submitMock}>
         <SelectCreatableField choices={[['foo', 'foo']]} name="fieldName" />
-      </Form>,
-      {}
+      </Form>
     );
 
-    const input = wrapper.find('SelectControl input[type="text"]');
-    changeInputValue(input, 'bar');
-    wrapper.update();
+    // react-select renders the input as a textbox, and without a label it has no accessible name
+    const selectInput = container.querySelector(
+      'input[id^="react-select-"][id$="-input"]'
+    );
+    await userEvent.type(selectInput, 'bar');
 
     // Text is in input
-    expect(wrapper.find('SelectControl input[type="text"]').props().value).toBe('bar');
+    expect(selectInput).toHaveValue('bar');
 
     // Click on create option
-    openMenu(wrapper, {control: true});
-    wrapper.find('SelectControl Option div').simulate('click');
+    await waitFor(() => {
+      expect(screen.getByText(/Create "bar"/i)).toBeInTheDocument();
+    });
+    const createOption = screen.getByText(/Create "bar"/i);
+    await userEvent.click(createOption);
 
-    wrapper.find('Form').simulate('submit');
+    // Verify the value is set
+    await waitFor(() => {
+      const hiddenInput = container.querySelector(
+        'input[type="hidden"][name="fieldName"]'
+      );
+      expect(hiddenInput).toHaveValue('bar');
+    });
+
+    fireEvent.submit(container.querySelector('form'));
     expect(submitMock).toHaveBeenCalledWith(
       {
         fieldName: 'bar',

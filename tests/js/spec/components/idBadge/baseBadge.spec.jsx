@@ -1,39 +1,39 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import BaseBadge from 'app/components/idBadge/baseBadge';
 
 describe('BadgeBadge', function () {
   it('has a display name', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <BaseBadge
         organization={TestStubs.Organization()}
         displayName={<span id="test">display name</span>}
-      />,
-      TestStubs.routerContext()
+      />
     );
-    expect(wrapper.find('#test')).toHaveLength(1);
-    expect(wrapper.find('#test').text()).toBe('display name');
+    const testElement = container.querySelector('#test');
+    expect(testElement).toBeInTheDocument();
+    expect(testElement).toHaveTextContent('display name');
   });
 
   it('can hide avatar', function () {
-    const wrapper = mountWithTheme(
-      <BaseBadge organization={TestStubs.Organization()} hideAvatar />,
-      TestStubs.routerContext()
+    const {container} = renderWithTheme(
+      <BaseBadge organization={TestStubs.Organization()} hideAvatar />
     );
-    expect(wrapper.find('StyledAvatar')).toHaveLength(0);
+    const avatar = container.querySelector('.avatar');
+    expect(avatar).not.toBeInTheDocument();
   });
 
   it('can hide name', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <BaseBadge
         organization={TestStubs.Organization()}
         hideName
         displayName={<span id="test">display name</span>}
-      />,
-      TestStubs.routerContext()
+      />
     );
-    expect(wrapper.find('#test')).toHaveLength(0);
+    const testElement = container.querySelector('#test');
+    expect(testElement).not.toBeInTheDocument();
   });
 });

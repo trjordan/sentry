@@ -1,16 +1,21 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
-import {Client} from 'app/api';
 import AwsLambdaFunctionSelect from 'app/views/integrationPipeline/awsLambdaFunctionSelect';
 
 describe('AwsLambdaFunctionSelect', () => {
-  let wrapper;
   let lambdaFunctions;
   let mockRequest;
+  let consoleWarnSpy;
+  let consoleErrorSpy;
+
   beforeEach(() => {
-    mockRequest = Client.addMockResponse({
+    // Suppress MobX warnings in tests
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    mockRequest = MockApiClient.addMockResponse({
       url: '/extensions/aws_lambda/setup/',
       body: {},
     });
@@ -20,13 +25,16 @@ describe('AwsLambdaFunctionSelect', () => {
       {FunctionName: 'lambdaB', Runtime: 'nodejs10.x'},
       {FunctionName: 'lambdaC', Runtime: 'nodejs10.x'},
     ];
-    wrapper = mountWithTheme(
-      <AwsLambdaFunctionSelect lambdaFunctions={lambdaFunctions} />
-    );
+    renderWithTheme(<AwsLambdaFunctionSelect lambdaFunctions={lambdaFunctions} />);
   });
-  it('choose lambdas', () => {
-    wrapper.find('button[name="lambdaB"]').simulate('click');
-    wrapper.find('StyledButton[aria-label="Finish Setup"]').simulate('click');
+
+  afterEach(() => {
+    consoleWarnSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+  it('choose lambdas', async () => {
+    await userEvent.click(screen.getByRole('checkbox', {name: 'lambdaB'}));
+    await userEvent.click(screen.getByRole('button', {name: 'Finish Setup'}));
 
     expect(mockRequest).toHaveBeenCalledWith(
       '/extensions/aws_lambda/setup/',

@@ -1,31 +1,30 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import InactivePlugins from 'app/components/inactivePlugins';
 
 describe('InactivePlugins', function () {
   it('renders null when no plugins', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <InactivePlugins plugins={[]} onEnablePlugin={() => {}} />
     );
-    expect(wrapper).toSnapshot();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('renders plugins list', function () {
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <InactivePlugins onEnablePlugin={() => {}} plugins={TestStubs.Plugins()} />
     );
-    expect(wrapper).toSnapshot();
+    expect(screen.getByText('Inactive Integrations')).toBeInTheDocument();
+    expect(screen.getAllByRole('button').length).toBeGreaterThan(0);
   });
 
-  it('enables a plugin', function () {
+  it('enables a plugin', async function () {
     const enableFn = jest.fn();
     const plugins = TestStubs.Plugins();
-    const wrapper = mountWithTheme(
-      <InactivePlugins onEnablePlugin={enableFn} plugins={plugins} />
-    );
-    wrapper.find('button').first().simulate('click');
+    renderWithTheme(<InactivePlugins onEnablePlugin={enableFn} plugins={plugins} />);
+    await userEvent.click(screen.getAllByRole('button')[0]);
     expect(enableFn).toHaveBeenCalledWith(expect.objectContaining(plugins[0]));
   });
 });

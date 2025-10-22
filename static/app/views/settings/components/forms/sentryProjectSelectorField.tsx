@@ -36,7 +36,7 @@ class RenderField extends React.Component<RenderProps> {
   };
 
   render() {
-    const {projects, avatarSize, onChange, onBlur, ...rest} = this.props;
+    const {projects, avatarSize, onChange, onBlur, id, ...rest} = this.props;
 
     const projectOptions = projects.map(({slug, id}) => ({value: id, label: slug}));
 
@@ -79,6 +79,7 @@ class RenderField extends React.Component<RenderProps> {
 
     return (
       <SelectControl
+        inputId={id}
         options={projectOptions}
         components={{
           Option: customOptionProject,

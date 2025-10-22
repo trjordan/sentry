@@ -1,8 +1,15 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  render,
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+  tick,
+} from 'sentry-test/reactTestingLibrary';
 import {initializeOrg} from 'sentry-test/initializeOrg';
-import {mockRouterPush} from 'sentry-test/mockRouterPush';
 
 import * as globalActions from 'app/actionCreators/globalSelection';
 import OrganizationActions from 'app/actions/organizationActions';
@@ -12,43 +19,36 @@ import GlobalSelectionStore from 'app/stores/globalSelectionStore';
 import ProjectsStore from 'app/stores/projectsStore';
 import {getItem} from 'app/utils/localStorage';
 
-const changeQuery = (routerContext, query) => ({
-  ...routerContext,
-  context: {
-    ...routerContext.context,
-    router: {
-      ...routerContext.context.router,
-      location: {
-        query,
-      },
-    },
-  },
-});
-
 jest.mock('app/utils/localStorage', () => ({
   getItem: jest.fn(),
   setItem: jest.fn(),
 }));
 
 describe('GlobalSelectionHeader', function () {
-  const {organization, router, routerContext} = initializeOrg({
-    organization: {features: ['global-views']},
-    projects: [
-      {
-        id: 2,
-        slug: 'project-2',
+  let initialData;
+  
+  beforeEach(function () {
+    initialData = initializeOrg({
+      organization: {features: ['global-views']},
+      projects: [
+        {
+          id: 2,
+          slug: 'project-2',
+        },
+        {
+          id: 3,
+          slug: 'project-3',
+          environments: ['prod', 'staging'],
+        },
+      ],
+      router: {
+        location: {query: {}},
+        params: {orgId: 'org-slug'},
       },
-      {
-        id: 3,
-        slug: 'project-3',
-        environments: ['prod', 'staging'],
-      },
-    ],
-    router: {
-      location: {query: {}},
-      params: {orgId: 'org-slug'},
-    },
+    });
   });
+  
+  const {organization, router, routerContext} = initialData || {};
 
   beforeAll(function () {
     jest.spyOn(globalActions, 'updateDateTime');

@@ -1,10 +1,14 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
 
 import {addErrorMessage} from 'app/actionCreators/indicator';
-import Button from 'app/components/button';
-import WrappedDataExport from 'app/components/dataExport';
+import {DataExport} from 'app/components/dataExport';
 
 jest.mock('app/actionCreators/indicator');
 
@@ -19,52 +23,58 @@ describe('DataExport', function () {
     queryType: 'Issues-by-Tag',
     queryInfo: {project_id: '1', group_id: '1027', key: 'user'},
   };
-  const mockRouterContext = mockOrganization =>
-    TestStubs.routerContext([
-      {
-        organization: mockOrganization,
-      },
-    ]);
+  const mockApi = new MockApiClient();
 
   it('should not render anything for an unauthorized organization', function () {
-    const wrapper = mountWithTheme(
-      <WrappedDataExport payload={mockPayload} />,
-      mockRouterContext(mockUnauthorizedOrg)
+    const {container} = renderWithTheme(
+      <DataExport
+        api={mockApi}
+        organization={mockUnauthorizedOrg}
+        payload={mockPayload}
+      />,
+      {context: {organization: mockUnauthorizedOrg}}
     );
-    expect(wrapper.isEmptyRender()).toBe(true);
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('should render the button for an authorized organization', function () {
-    const wrapper = mountWithTheme(
-      <WrappedDataExport payload={mockPayload} />,
-      mockRouterContext(mockAuthorizedOrg)
+    renderWithTheme(
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />,
+      {context: {organization: mockAuthorizedOrg}}
     );
-    expect(wrapper.isEmptyRender()).toBe(false);
-    expect(wrapper.text()).toContain('Export All to CSV');
+    expect(screen.getByRole('button', {name: 'Export All to CSV'})).toBeInTheDocument();
   });
 
   it('should render custom children if provided', function () {
     const testString = 'This is an example string';
-    const wrapper = mountWithTheme(
-      <WrappedDataExport payload={mockPayload}>{testString}</WrappedDataExport>,
-      mockRouterContext(mockAuthorizedOrg)
+    renderWithTheme(
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload}>
+        {testString}
+      </DataExport>,
+      {context: {organization: mockAuthorizedOrg}}
     );
-    expect(wrapper.text()).toContain(testString);
+    expect(screen.getByRole('button', {name: testString})).toBeInTheDocument();
   });
 
-  it('should respect the disabled prop and not be clickable', function () {
+  it('should respect the disabled prop and not be clickable', async function () {
     const url = `/organizations/${mockAuthorizedOrg.slug}/data-export/`;
     const postDataExport = MockApiClient.addMockResponse({
       url,
       method: 'POST',
       body: {id: 721},
     });
-    const wrapper = mountWithTheme(
-      <WrappedDataExport payload={mockPayload} disabled />,
-      mockRouterContext(mockAuthorizedOrg)
+    renderWithTheme(
+      <DataExport
+        api={mockApi}
+        organization={mockAuthorizedOrg}
+        payload={mockPayload}
+        disabled
+      />,
+      {context: {organization: mockAuthorizedOrg}}
     );
-    expect(wrapper.find(Button).prop('disabled')).toBe(true);
-    wrapper.find('button').simulate('click');
+    const button = screen.getByRole('button', {name: 'Export All to CSV'});
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.click(button);
     expect(postDataExport).not.toHaveBeenCalled();
   });
 
@@ -75,14 +85,21 @@ describe('DataExport', function () {
       method: 'POST',
       body: {id: 721},
     });
-    const wrapper = mountWithTheme(
-      <WrappedDataExport payload={mockPayload} />,
-      mockRouterContext(mockAuthorizedOrg)
+    renderWithTheme(
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />,
+      {context: {organization: mockAuthorizedOrg}}
     );
-    expect(wrapper.find(Button).prop('disabled')).toBe(false);
-    wrapper.find('button').simulate('click');
-    await tick();
-    expect(wrapper.find(Button).prop('disabled')).toBe(true);
+    const button = screen.getByRole('button', {name: 'Export All to CSV'});
+    expect(button).not.toHaveAttribute('aria-disabled', 'true');
+
+    await userEvent.click(button);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', {name: "We're working on it..."})
+      ).toHaveAttribute('aria-disabled', 'true');
+    });
+
     expect(postDataExport).toHaveBeenCalledWith(url, {
       data: {
         query_type: mockPayload.queryType,
@@ -92,9 +109,6 @@ describe('DataExport', function () {
       error: expect.anything(),
       success: expect.anything(),
     });
-    await tick();
-    wrapper.update();
-    expect(wrapper.find(Button).prop('disabled')).toBe(true);
   });
 
   it('should reset the state when receiving a new payload', async function () {
@@ -104,17 +118,31 @@ describe('DataExport', function () {
       method: 'POST',
       body: {id: 721},
     });
-    const wrapper = mountWithTheme(
-      <WrappedDataExport payload={mockPayload} />,
-      mockRouterContext(mockAuthorizedOrg)
+    const {rerender} = renderWithTheme(
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />,
+      {context: {organization: mockAuthorizedOrg}}
     );
-    wrapper.find('button').simulate('click');
-    await tick();
-    wrapper.update();
-    expect(wrapper.find(Button).prop('disabled')).toBe(true);
-    wrapper.setProps({payload: {...mockPayload, queryType: 'Discover'}});
-    wrapper.update();
-    expect(wrapper.find(Button).prop('disabled')).toBe(false);
+
+    await userEvent.click(screen.getByRole('button', {name: 'Export All to CSV'}));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', {name: "We're working on it..."})
+      ).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    rerender(
+      <DataExport
+        api={mockApi}
+        organization={mockAuthorizedOrg}
+        payload={{...mockPayload, queryType: 'Discover'}}
+      />
+    );
+
+    expect(screen.getByRole('button', {name: 'Export All to CSV'})).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 
   it('should display default error message if non provided', async function () {
@@ -124,17 +152,23 @@ describe('DataExport', function () {
       method: 'POST',
       statusCode: 400,
     });
-    const wrapper = mountWithTheme(
-      <WrappedDataExport payload={mockPayload} />,
-      mockRouterContext(mockAuthorizedOrg)
+    renderWithTheme(
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />,
+      {context: {organization: mockAuthorizedOrg}}
     );
-    wrapper.find('button').simulate('click');
-    await tick();
-    expect(addErrorMessage).toHaveBeenCalledWith(
-      "We tried our hardest, but we couldn't export your data. Give it another go."
+
+    await userEvent.click(screen.getByRole('button', {name: 'Export All to CSV'}));
+
+    await waitFor(() => {
+      expect(addErrorMessage).toHaveBeenCalledWith(
+        "We tried our hardest, but we couldn't export your data. Give it another go."
+      );
+    });
+
+    expect(screen.getByRole('button', {name: 'Export All to CSV'})).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
     );
-    wrapper.update();
-    expect(wrapper.find(Button).prop('disabled')).toBe(false);
   });
 
   it('should display provided error message', async function () {
@@ -145,12 +179,15 @@ describe('DataExport', function () {
       statusCode: 400,
       body: {detail: 'uh oh'},
     });
-    const wrapper = mountWithTheme(
-      <WrappedDataExport payload={mockPayload} />,
-      mockRouterContext(mockAuthorizedOrg)
+    renderWithTheme(
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />,
+      {context: {organization: mockAuthorizedOrg}}
     );
-    wrapper.find('button').simulate('click');
-    await tick();
-    expect(addErrorMessage).toHaveBeenCalledWith('uh oh');
+
+    await userEvent.click(screen.getByRole('button', {name: 'Export All to CSV'}));
+
+    await waitFor(() => {
+      expect(addErrorMessage).toHaveBeenCalledWith('uh oh');
+    });
   });
 });

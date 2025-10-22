@@ -1,39 +1,45 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen} from 'sentry-test/reactTestingLibrary';
 
 import LoadingContainer from 'app/components/loading/loadingContainer';
 
 describe('LoadingContainer', function () {
-  let wrapper;
-  beforeEach(() => {
-    wrapper = mountWithTheme(
+  it('handles normal state', () => {
+    render(
       <LoadingContainer>
         <div>hello!</div>
       </LoadingContainer>
     );
-  });
-
-  it('handles normal state', () => {
-    expect(wrapper.text()).toBe('hello!');
-    expect(wrapper.find('LoadingIndicator')).toHaveLength(0);
+    expect(screen.getByText('hello!')).toBeInTheDocument();
+    expect(screen.queryByTestId('loading-indicator')).not.toBeInTheDocument();
   });
 
   it('handles loading state', () => {
-    wrapper.setProps({isLoading: true});
-    expect(wrapper.text()).toBe('hello!');
-    expect(wrapper.find('LoadingIndicator')).toHaveLength(1);
-    wrapper.setProps({children: null});
-    expect(wrapper.text()).toBe('');
-    expect(wrapper.find('LoadingIndicator')).toHaveLength(1);
+    const {rerender} = render(
+      <LoadingContainer isLoading>
+        <div>hello!</div>
+      </LoadingContainer>
+    );
+    expect(screen.getByText('hello!')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+
+    rerender(<LoadingContainer isLoading>{null}</LoadingContainer>);
+    expect(screen.queryByText('hello!')).not.toBeInTheDocument();
+    expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
   });
 
   it('handles reloading state', () => {
-    wrapper.setProps({isReloading: true});
-    expect(wrapper.text()).toBe('hello!');
-    expect(wrapper.find('LoadingIndicator')).toHaveLength(1);
-    wrapper.setProps({children: null});
-    expect(wrapper.text()).toBe('');
-    expect(wrapper.find('LoadingIndicator')).toHaveLength(1);
+    const {rerender} = render(
+      <LoadingContainer isReloading>
+        <div>hello!</div>
+      </LoadingContainer>
+    );
+    expect(screen.getByText('hello!')).toBeInTheDocument();
+    expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
+
+    rerender(<LoadingContainer isReloading>{null}</LoadingContainer>);
+    expect(screen.queryByText('hello!')).not.toBeInTheDocument();
+    expect(screen.getByTestId('loading-indicator')).toBeInTheDocument();
   });
 });

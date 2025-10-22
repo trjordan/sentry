@@ -1,9 +1,10 @@
 import React from 'react';
 import {browserHistory} from 'react-router';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent, waitFor} from 'sentry-test/reactTestingLibrary';
 import {initializeOrg} from 'sentry-test/initializeOrg';
 
+import GlobalSelectionStore from 'app/stores/globalSelectionStore';
 import ProjectsStore from 'app/stores/projectsStore';
 import TransactionSummary from 'app/views/performance/transactionSummary';
 
@@ -33,6 +34,8 @@ function initializeData({features: additionalFeatures = [], query = {}} = {}) {
 
 describe('Performance > TransactionSummary', function () {
   beforeEach(function () {
+    GlobalSelectionStore.reset();
+    
     MockApiClient.addMockResponse({
       url: '/organizations/org-slug/projects/',
       body: [],
@@ -236,73 +239,81 @@ describe('Performance > TransactionSummary', function () {
 
   it('renders basic UI elements', async function () {
     const initialData = initializeData();
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <TransactionSummary
+        api={new MockApiClient()}
         organization={initialData.organization}
+        projects={initialData.projects}
+        selection={{projects: [1], environments: [], datetime: {period: '14d'}}}
         location={initialData.router.location}
+        params={{orgId: 'org-slug'}}
+        loadingProjects={false}
       />,
-      initialData.routerContext
+      {context: initialData.routerContext.context}
     );
-    await tick();
-    wrapper.update();
 
     // It shows a chart
-    expect(wrapper.find('TransactionSummaryCharts')).toHaveLength(1);
+    expect(await screen.findByTestId('transaction-summary-charts')).toBeInTheDocument();
 
     // It shows a searchbar
-    expect(wrapper.find('SearchBar')).toHaveLength(1);
+    expect(screen.getByPlaceholderText('Search events')).toBeInTheDocument();
 
     // It shows a table
-    expect(wrapper.find('PanelTable')).toHaveLength(1);
+    expect(screen.getByRole('table')).toBeInTheDocument();
 
     // Ensure open in discover button exists.
-    expect(wrapper.find('a[data-test-id="discover-open"]')).toHaveLength(1);
-    // Ensure navigation is correct.
+    expect(screen.getByTestId('discover-open')).toBeInTheDocument();
 
     // Ensure open issues button exists.
-    expect(wrapper.find('a[data-test-id="issues-open"]')).toHaveLength(1);
+    expect(screen.getByTestId('issues-open')).toBeInTheDocument();
 
     // Ensure transaction filter button exists
-    expect(wrapper.find('[data-test-id="filter-transactions"]')).toHaveLength(1);
+    expect(screen.getByTestId('filter-transactions')).toBeInTheDocument();
 
     // Ensure create alert from discover is hidden without metric alert
-    expect(wrapper.find('CreateAlertFromViewButton')).toHaveLength(0);
+    expect(screen.queryByText('Create Alert')).not.toBeInTheDocument();
   });
 
   it('renders feature flagged UI elements', async function () {
     const initialData = initializeData();
     initialData.organization.features.push('incidents');
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <TransactionSummary
+        api={new MockApiClient()}
         organization={initialData.organization}
+        projects={initialData.projects}
+        selection={{projects: [1], environments: [], datetime: {period: '14d'}}}
         location={initialData.router.location}
+        params={{orgId: 'org-slug'}}
+        loadingProjects={false}
       />,
-      initialData.routerContext
+      {context: initialData.routerContext.context}
     );
-    await tick();
-    wrapper.update();
 
     // Ensure create alert from discover is shown with metric alerts
-    expect(wrapper.find('CreateAlertFromViewButton')).toHaveLength(1);
+    expect(await screen.findByText('Create Alert')).toBeInTheDocument();
   });
 
   it('triggers a navigation on search', async function () {
     const initialData = initializeData();
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <TransactionSummary
+        api={new MockApiClient()}
         organization={initialData.organization}
+        projects={initialData.projects}
+        selection={{projects: [1], environments: [], datetime: {period: '14d'}}}
         location={initialData.router.location}
+        params={{orgId: 'org-slug'}}
+        loadingProjects={false}
       />,
-      initialData.routerContext
+      {context: initialData.routerContext.context}
     );
-    await tick();
-    wrapper.update();
 
     // Fill out the search box, and submit it.
-    const searchBar = wrapper.find('SearchBar input');
-    searchBar
-      .simulate('change', {target: {value: 'user.email:uhoh*'}})
-      .simulate('submit', {preventDefault() {}});
+    const searchInput = await screen.findByPlaceholderText('Search events');
+    await userEvent.type(searchInput, 'user.email:uhoh*');
+    await userEvent.keyboard('{Enter}');
+
     // Check the navigation.
     expect(browserHistory.push).toHaveBeenCalledTimes(1);
     expect(browserHistory.push).toHaveBeenCalledWith({
@@ -318,50 +329,58 @@ describe('Performance > TransactionSummary', function () {
   });
 
   it('can mark a transaction as key', async function () {
-    const initialData = initializeData();
-    const wrapper = mountWithTheme(
-      <TransactionSummary
-        organization={initialData.organization}
-        location={initialData.router.location}
-      />,
-      initialData.routerContext
-    );
-    await tick();
-    wrapper.update();
-
     const mockUpdate = MockApiClient.addMockResponse({
       url: `/organizations/org-slug/key-transactions/`,
       method: 'POST',
       body: {},
     });
 
+    const initialData = initializeData();
+    renderWithTheme(
+      <TransactionSummary
+        api={new MockApiClient()}
+        organization={initialData.organization}
+        projects={initialData.projects}
+        selection={{projects: [1], environments: [], datetime: {period: '14d'}}}
+        location={initialData.router.location}
+        params={{orgId: 'org-slug'}}
+        loadingProjects={false}
+      />,
+      {context: initialData.routerContext.context}
+    );
+
     // Click the key transaction button
-    wrapper.find('KeyTransactionButton').simulate('click');
+    const keyTransactionButton = await screen.findByRole('button', {name: /key transaction/i});
+    await userEvent.click(keyTransactionButton);
 
     // Ensure request was made.
-    expect(mockUpdate).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalled();
+    });
   });
 
   it('triggers a navigation on transaction filter', async function () {
     const initialData = initializeData();
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <TransactionSummary
+        api={new MockApiClient()}
         organization={initialData.organization}
+        projects={initialData.projects}
+        selection={{projects: [1], environments: [], datetime: {period: '14d'}}}
         location={initialData.router.location}
+        params={{orgId: 'org-slug'}}
+        loadingProjects={false}
       />,
-      initialData.routerContext
+      {context: initialData.routerContext.context}
     );
-    await tick();
-    wrapper.update();
 
     // Open the transaction filter dropdown
-    wrapper.find('[data-test-id="filter-transactions"] button').simulate('click');
+    const filterButton = await screen.findByTestId('filter-transactions');
+    await userEvent.click(filterButton);
 
     // Click the second item (fastest transactions)
-    wrapper
-      .find('[data-test-id="filter-transactions"] DropdownItem span')
-      .at(1)
-      .simulate('click');
+    const dropdownItems = await screen.findAllByRole('option');
+    await userEvent.click(dropdownItems[1]);
 
     // Check the navigation.
     expect(browserHistory.push).toHaveBeenCalledWith({
@@ -377,21 +396,25 @@ describe('Performance > TransactionSummary', function () {
 
   it('renders pagination buttons', async function () {
     const initialData = initializeData();
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <TransactionSummary
+        api={new MockApiClient()}
         organization={initialData.organization}
+        projects={initialData.projects}
+        selection={{projects: [1], environments: [], datetime: {period: '14d'}}}
         location={initialData.router.location}
+        params={{orgId: 'org-slug'}}
+        loadingProjects={false}
       />,
-      initialData.routerContext
+      {context: initialData.routerContext.context}
     );
-    await tick();
-    wrapper.update();
 
-    const pagination = wrapper.find('Pagination');
-    expect(pagination).toHaveLength(1);
+    // Wait for pagination to be rendered
+    const nextButton = await screen.findByRole('button', {name: 'Next'});
+    expect(nextButton).toBeInTheDocument();
 
-    // Click the 'next' button'
-    pagination.find('button[aria-label="Next"]').simulate('click');
+    // Click the 'next' button
+    await userEvent.click(nextButton);
 
     // Check the navigation.
     expect(browserHistory.push).toHaveBeenCalledWith({
@@ -412,17 +435,22 @@ describe('Performance > TransactionSummary', function () {
     });
 
     const initialData = initializeData({query: {query: 'tag:value'}});
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <TransactionSummary
+        api={new MockApiClient()}
         organization={initialData.organization}
+        projects={initialData.projects}
+        selection={{projects: [1], environments: [], datetime: {period: '14d'}}}
         location={initialData.router.location}
+        params={{orgId: 'org-slug'}}
+        loadingProjects={false}
       />,
-      initialData.routerContext
+      {context: initialData.routerContext.context}
     );
-    await tick();
-    wrapper.update();
 
-    expect(issueGet).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(issueGet).toHaveBeenCalled();
+    });
   });
 
   it('does not forward event type to related issues', async function () {
@@ -443,16 +471,21 @@ describe('Performance > TransactionSummary', function () {
     const initialData = initializeData({
       query: {query: 'tag:value event.type:transaction'},
     });
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <TransactionSummary
+        api={new MockApiClient()}
         organization={initialData.organization}
+        projects={initialData.projects}
+        selection={{projects: [1], environments: [], datetime: {period: '14d'}}}
         location={initialData.router.location}
+        params={{orgId: 'org-slug'}}
+        loadingProjects={false}
       />,
-      initialData.routerContext
+      {context: initialData.routerContext.context}
     );
-    await tick();
-    wrapper.update();
 
-    expect(issueGet).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(issueGet).toHaveBeenCalled();
+    });
   });
 });

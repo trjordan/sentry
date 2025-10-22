@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render} from 'sentry-test/reactTestingLibrary';
 
 import DateTime from 'app/components/dateTime';
 import ConfigStore from 'app/stores/configStore';
@@ -18,38 +18,38 @@ describe('DateTime', () => {
   });
 
   it('renders a date', () => {
-    const wrapper = mountWithTheme(<DateTime date={new Date()} />);
-    expect(wrapper.text()).toBe('Oct 16, 2017 7:41:20 PM PDT');
+    const {container} = render(<DateTime date={new Date()} />);
+    expect(container).toHaveTextContent('Oct 16, 2017 7:41:20 PM PDT');
   });
 
   it('renders a date without seconds', () => {
-    const wrapper = mountWithTheme(<DateTime date={new Date()} seconds={false} />);
-    expect(wrapper.text()).toBe('Oct 16, 2017 7:41 PM');
+    const {container} = render(<DateTime date={new Date()} seconds={false} />);
+    expect(container).toHaveTextContent('Oct 16, 2017 7:41 PM');
   });
 
   it('renders timeonly', () => {
-    const wrapper = mountWithTheme(<DateTime date={new Date()} timeOnly />);
-    expect(wrapper.text()).toBe('7:41 PM');
+    const {container} = render(<DateTime date={new Date()} timeOnly />);
+    expect(container).toHaveTextContent('7:41 PM');
   });
 
   it('renders dateOnly', () => {
-    const wrapper = mountWithTheme(<DateTime date={new Date()} dateOnly />);
-    expect(wrapper.text()).toBe('October 16, 2017');
+    const {container} = render(<DateTime date={new Date()} dateOnly />);
+    expect(container).toHaveTextContent('October 16, 2017');
   });
 
   it('renders shortDate', () => {
-    const wrapper = mountWithTheme(<DateTime date={new Date()} shortDate />);
-    expect(wrapper.text()).toBe('10/16/2017');
+    const {container} = render(<DateTime date={new Date()} shortDate />);
+    expect(container).toHaveTextContent('10/16/2017');
   });
 
   it('renders timeAndDate', () => {
-    const wrapper = mountWithTheme(<DateTime date={new Date()} timeAndDate />);
-    expect(wrapper.text()).toBe('Oct 16, 7:41 PM');
+    const {container} = render(<DateTime date={new Date()} timeAndDate />);
+    expect(container).toHaveTextContent('Oct 16, 7:41 PM');
   });
 
   it('renders date with forced utc', () => {
-    const wrapper = mountWithTheme(<DateTime date={new Date()} utc />);
-    expect(wrapper.text()).toBe('Oct 17, 2017 2:41:20 AM UTC');
+    const {container} = render(<DateTime date={new Date()} utc />);
+    expect(container).toHaveTextContent('Oct 17, 2017 2:41:20 AM UTC');
   });
 
   describe('24 Hours', () => {
@@ -64,18 +64,18 @@ describe('DateTime', () => {
     });
 
     it('renders a date', () => {
-      const wrapper = mountWithTheme(<DateTime date={new Date()} />);
-      expect(wrapper.text()).toBe('Oct 16, 2017 19:41');
+      const {container} = render(<DateTime date={new Date()} />);
+      expect(container).toHaveTextContent('Oct 16, 2017 19:41');
     });
 
     it('renders timeonly', () => {
-      const wrapper = mountWithTheme(<DateTime date={new Date()} timeOnly />);
-      expect(wrapper.text()).toBe('19:41');
+      const {container} = render(<DateTime date={new Date()} timeOnly />);
+      expect(container).toHaveTextContent('19:41');
     });
 
     it('renders date with forced utc', () => {
-      const wrapper = mountWithTheme(<DateTime date={new Date()} utc />);
-      expect(wrapper.text()).toBe('Oct 17, 2017 02:41');
+      const {container} = render(<DateTime date={new Date()} utc />);
+      expect(container).toHaveTextContent('Oct 17, 2017 02:41');
     });
   });
 });

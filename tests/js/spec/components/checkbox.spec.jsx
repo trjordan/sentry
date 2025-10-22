@@ -1,13 +1,12 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import Checkbox from 'app/components/checkbox';
 
 describe('Checkbox', function () {
   it('renders', function () {
-    const component = mountWithTheme(<Checkbox onChange={() => {}} />);
-
-    expect(component).toSnapshot();
+    const {container} = renderWithTheme(<Checkbox onChange={() => {}} />);
+    expect(container).toSnapshot();
   });
 });

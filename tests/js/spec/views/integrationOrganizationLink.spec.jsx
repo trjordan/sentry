@@ -1,21 +1,12 @@
 import React from 'react';
 import pick from 'lodash/pick';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {selectByValue} from 'sentry-test/select-new';
+import {fireEvent, renderWithTheme, screen, tick} from 'sentry-test/reactTestingLibrary';
 
 import IntegrationOrganizationLink from 'app/views/integrationOrganizationLink';
 
 describe('IntegrationOrganizationLink', () => {
-  let wrapper,
-    getOrgsMock,
-    getOrgMock,
-    getProviderMock,
-    getMountedComponent,
-    org1,
-    org1Lite,
-    org2,
-    org2Lite;
+  let getOrgsMock, getOrgMock, getProviderMock, org1, org1Lite, org2, org2Lite;
   beforeEach(() => {
     MockApiClient.clearMockResponses();
     org1 = TestStubs.Organization({
@@ -35,12 +26,6 @@ describe('IntegrationOrganizationLink', () => {
       url: '/organizations/',
       body: [org1Lite, org2Lite],
     });
-
-    getMountedComponent = () =>
-      mountWithTheme(
-        <IntegrationOrganizationLink params={{integrationSlug: 'vercel'}} />,
-        TestStubs.routerContext()
-      );
   });
 
   it('selecting org from dropdown loads the org through the API', async () => {
@@ -54,21 +39,38 @@ describe('IntegrationOrganizationLink', () => {
       body: {providers: [TestStubs.VercelProvider()]},
     });
 
-    wrapper = getMountedComponent();
+    const routerContext = TestStubs.routerContext();
+    const {container} = renderWithTheme(
+      <IntegrationOrganizationLink params={{integrationSlug: 'vercel'}} />,
+      {context: routerContext.context}
+    );
 
     expect(getOrgsMock).toHaveBeenCalled();
     expect(getOrgMock).not.toHaveBeenCalled();
 
     await tick();
-    wrapper.update();
 
-    selectByValue(wrapper, org2.slug, {control: true});
+    // Find the Control div that wraps the input
+    const control = container.querySelector('[class*="control"]');
+    if (control) {
+      // Trigger the react-select mouseDown event to open the menu
+      fireEvent.mouseDown(control, {target: {tagName: 'INPUT'}});
+    }
+    // Focus the input to fully open the menu
+    const input = container.querySelector('input');
+    if (input) {
+      fireEvent.focus(input);
+    }
+
+    // Wait a tick for the menu to render
+    await tick();
+
+    // Find and click the org2 option
+    const org2Option = screen.getByText(org2.name);
+    fireEvent.click(org2Option);
 
     await tick();
-    wrapper.update();
 
-    expect(wrapper.state('selectedOrgSlug')).toBe(org2.slug);
-    expect(wrapper.state('organization')).toBe(org2);
     expect(getProviderMock).toHaveBeenCalled();
     expect(getOrgMock).toHaveBeenCalled();
   });

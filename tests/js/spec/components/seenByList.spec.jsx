@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import SeenByList from 'app/components/seenByList';
 import ConfigStore from 'app/stores/configStore';
@@ -13,12 +13,12 @@ describe('SeenByList', function () {
   afterEach(function () {});
 
   it('should return null if seenBy is falsy', function () {
-    const wrapper = mountWithTheme(<SeenByList />);
-    expect(wrapper.children()).toHaveLength(0);
+    const {container} = renderWithTheme(<SeenByList />);
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('should return a list of each user that saw', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <SeenByList
         seenBy={[
           {id: '1', email: 'jane@example.com'},
@@ -27,9 +27,7 @@ describe('SeenByList', function () {
       />
     );
 
-    expect(wrapper.find('IconShow')).toHaveLength(1);
-    expect(wrapper.find('AvatarList')).toHaveLength(1);
-    expect(wrapper.find('UserAvatar')).toHaveLength(2);
+    expect(container.querySelectorAll('.avatar')).toHaveLength(2);
   });
 
   it('filters out the current user from list of users', function () {
@@ -37,7 +35,7 @@ describe('SeenByList', function () {
       .spyOn(ConfigStore, 'get')
       .mockImplementation(() => ({id: '1', email: 'jane@example.com'}));
 
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <SeenByList
         seenBy={[
           {id: '1', email: 'jane@example.com'},
@@ -46,9 +44,10 @@ describe('SeenByList', function () {
       />
     );
 
-    expect(wrapper.find('IconShow')).toHaveLength(1);
-    expect(wrapper.find('AvatarList')).toHaveLength(1);
-    expect(wrapper.find('UserAvatar')).toHaveLength(1);
-    expect(wrapper.find('LetterAvatar').prop('displayName')).toBe('john@example.com');
+    expect(container.querySelectorAll('.avatar')).toHaveLength(1);
+
+    // Check the displayed user is john by looking at the avatar's title attribute
+    const avatar = container.querySelector('.avatar');
+    expect(avatar).toHaveAttribute('title', 'john@example.com');
   });
 });

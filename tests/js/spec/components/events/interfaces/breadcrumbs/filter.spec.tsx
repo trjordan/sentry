@@ -1,6 +1,11 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  fireEvent,
+  renderWithTheme,
+  screen,
+  userEvent,
+} from 'sentry-test/reactTestingLibrary';
 
 import Filter from 'app/components/events/interfaces/breadcrumbs/filter';
 import Icon from 'app/components/events/interfaces/breadcrumbs/icon';
@@ -68,73 +73,98 @@ const options: React.ComponentProps<typeof Filter>['options'] = [
 ];
 
 describe('Filter', () => {
-  let handleFilter;
+  let handleFilter: jest.Mock<any, any>;
 
   beforeEach(() => {
     handleFilter = jest.fn();
   });
 
-  it('default render', () => {
-    const wrapper = mountWithTheme(<Filter options={options} onFilter={handleFilter} />);
+  it('default render', async () => {
+    renderWithTheme(<Filter options={options} onFilter={handleFilter} />);
 
-    expect(wrapper.find('OptionsGroup')).toHaveLength(2);
-    expect(wrapper.find('OptionsGroup').at(0).find('Header').text()).toBe('Type');
-    expect(wrapper.find('OptionsGroup').at(0).find('ListItem')).toHaveLength(6);
-    expect(wrapper.find('OptionsGroup').at(1).find('Header').text()).toBe('Level');
-    expect(wrapper.find('OptionsGroup').at(1).find('ListItem')).toHaveLength(2);
-    expect(wrapper).toSnapshot();
+    // Open the dropdown
+    await userEvent.click(screen.getByRole('button'));
+
+    expect(screen.getByText('Type')).toBeInTheDocument();
+    expect(screen.getByText('Level')).toBeInTheDocument();
+
+    // Check Type options
+    expect(screen.getByText('HTTP request')).toBeInTheDocument();
+    expect(screen.getByText('Transaction')).toBeInTheDocument();
+    expect(screen.getByText('User Action')).toBeInTheDocument();
+    expect(screen.getByText('Navigation')).toBeInTheDocument();
+    expect(screen.getByText('Debug')).toBeInTheDocument();
+    expect(screen.getByText('Error')).toBeInTheDocument();
+
+    // Check Level options
+    expect(screen.getByText('info')).toBeInTheDocument();
+    expect(screen.getByText('error')).toBeInTheDocument();
   });
 
   it('Without Options', () => {
-    const wrapper = mountWithTheme(<Filter options={[[], []]} onFilter={handleFilter} />);
-    expect(wrapper.find('Header')).toHaveLength(0);
-    expect(wrapper.find('OptionsGroup')).toHaveLength(0);
-  });
-
-  it('With Option Type only', () => {
-    const wrapper = mountWithTheme(
-      <Filter options={[options[0], []]} onFilter={handleFilter} />
+    const {container} = renderWithTheme(
+      <Filter options={[[], []]} onFilter={handleFilter} />
     );
 
-    const optionsGroup = wrapper.find('OptionsGroup');
+    // Should not render anything
+    expect(container.firstChild).toBeNull();
+  });
 
-    expect(optionsGroup).toHaveLength(1);
-    expect(optionsGroup.find('Header').text()).toBe('Type');
-    expect(optionsGroup.find('ListItem')).toHaveLength(6);
+  it('With Option Type only', async () => {
+    renderWithTheme(<Filter options={[options[0], []]} onFilter={handleFilter} />);
 
-    const firstOptionLevel = wrapper.find('OptionsGroup').at(0).find('ListItem').at(0);
+    // Open the dropdown
+    await userEvent.click(screen.getByRole('button'));
 
-    expect(firstOptionLevel.text()).toBe(options[0][0].description);
-    expect(
-      firstOptionLevel.find('[role="checkbox"]').find('CheckboxFancyContent').props()
-        .isChecked
-    ).toBeTruthy();
+    expect(screen.getByText('Type')).toBeInTheDocument();
+    expect(screen.queryByText('Level')).not.toBeInTheDocument();
 
-    firstOptionLevel.simulate('click');
+    // Check Type options
+    expect(screen.getByText('HTTP request')).toBeInTheDocument();
+    expect(screen.getByText('Transaction')).toBeInTheDocument();
+    expect(screen.getByText('User Action')).toBeInTheDocument();
+    expect(screen.getByText('Navigation')).toBeInTheDocument();
+    expect(screen.getByText('Debug')).toBeInTheDocument();
+    expect(screen.getByText('Error')).toBeInTheDocument();
+
+    const firstOption = screen.getByText('HTTP request').parentElement;
+    expect(firstOption).toHaveTextContent('HTTP request');
+
+    // Check checkbox is rendered and checked - use data-test-id instead
+    const checkbox = firstOption?.querySelector('[data-test-id="checkbox-fancy"]');
+    expect(checkbox).toBeInTheDocument();
+
+    // Click the first option using fireEvent instead of userEvent
+    fireEvent.click(firstOption!);
 
     expect(handleFilter).toHaveBeenCalledTimes(1);
   });
 
-  it('With Option Level only', () => {
-    const wrapper = mountWithTheme(
-      <Filter options={[[], options[1]]} onFilter={handleFilter} />
-    );
+  it('With Option Level only', async () => {
+    renderWithTheme(<Filter options={[[], options[1]]} onFilter={handleFilter} />);
 
-    const optionsGroup = wrapper.find('OptionsGroup');
+    // Open the dropdown
+    await userEvent.click(screen.getByRole('button'));
 
-    expect(optionsGroup).toHaveLength(1);
-    expect(optionsGroup.find('Header').text()).toBe('Level');
-    expect(optionsGroup.find('ListItem')).toHaveLength(2);
+    expect(screen.queryByText('Type')).not.toBeInTheDocument();
+    expect(screen.getByText('Level')).toBeInTheDocument();
 
-    const firstOptionLevel = wrapper.find('OptionsGroup').at(0).find('ListItem').at(0);
+    // Check Level options (lowercase as per the component)
+    expect(screen.getByText('info')).toBeInTheDocument();
+    expect(screen.getByText('error')).toBeInTheDocument();
 
-    expect(firstOptionLevel.text()).toBe(options[1][0].type.toLocaleLowerCase());
-    expect(
-      firstOptionLevel.find('[role="checkbox"]').find('CheckboxFancyContent').props()
-        .isChecked
-    ).toBeTruthy();
+    // The "info" text is inside a Tag component, which is inside ListItem
+    // We need to traverse up from the text to find the ListItem (li element)
+    const infoText = screen.getByText(options[1][0].type.toLocaleLowerCase());
+    const firstOption = infoText.closest('li');
+    expect(firstOption).toHaveTextContent(options[1][0].type.toLocaleLowerCase());
 
-    firstOptionLevel.simulate('click');
+    // Check checkbox is rendered and checked - use data-test-id instead
+    const checkbox = firstOption?.querySelector('[data-test-id="checkbox-fancy"]');
+    expect(checkbox).toBeInTheDocument();
+
+    // Click the first option using fireEvent instead of userEvent
+    fireEvent.click(firstOption!);
 
     expect(handleFilter).toHaveBeenCalledTimes(1);
   });

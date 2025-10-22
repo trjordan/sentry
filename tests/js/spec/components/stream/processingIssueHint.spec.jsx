@@ -1,11 +1,11 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import ProcessingIssueHint from 'app/components/stream/processingIssueHint';
 
 describe('ProcessingIssueHint', function () {
-  let issue, wrapper;
+  let issue;
   const orgId = 'test-org';
   const projectId = 'test-project';
 
@@ -22,87 +22,91 @@ describe('ProcessingIssueHint', function () {
   });
 
   describe('numIssues state', function () {
+    let container;
+
     beforeEach(() => {
       issue.numIssues = 9;
-      wrapper = mountWithTheme(
+      const result = renderWithTheme(
         <ProcessingIssueHint issue={issue} orgId={orgId} projectId={projectId} />
       );
+      container = result.container;
     });
 
     it('displays a button', function () {
-      const button = wrapper.find('Button');
-      expect(button.length).toBe(1);
-      expect(button.props().to).toEqual(
-        `/settings/${orgId}/projects/${projectId}/processing-issues/`
-      );
+      const button = screen.getByRole('button', {name: 'Show details'});
+      expect(button).toBeInTheDocument();
+      // Button component with 'to' prop renders as React Router Link (no href in test env)
+      expect(button.tagName).toBe('A');
     });
 
     it('displays an icon', function () {
-      const icon = wrapper.find('IconWarning');
-      expect(icon.length).toBe(1);
+      const icon = container.querySelector('svg');
+      expect(icon).toBeInTheDocument();
     });
 
     it('displays text', function () {
-      const text = wrapper.find('Wrapper').text();
-      expect(text).toEqual(expect.stringContaining('issues blocking'));
+      expect(screen.getByText(/issues blocking/i)).toBeInTheDocument();
     });
   });
 
   describe('issuesProcessing state', function () {
+    let container;
+
     beforeEach(() => {
       issue.issuesProcessing = 9;
-      wrapper = mountWithTheme(
+      const result = renderWithTheme(
         <ProcessingIssueHint issue={issue} orgId={orgId} projectId={projectId} />
       );
+      container = result.container;
     });
 
     it('does not display a button', function () {
-      const button = wrapper.find('Button');
-      expect(button.length).toBe(0);
+      const button = screen.queryByRole('button', {name: 'Show details'});
+      expect(button).not.toBeInTheDocument();
     });
 
     it('displays an icon', function () {
-      const icon = wrapper.find('IconSettings');
-      expect(icon.length).toBe(1);
+      const icon = container.querySelector('svg');
+      expect(icon).toBeInTheDocument();
     });
 
     it('displays text', function () {
-      const text = wrapper.find('Wrapper').text();
-      expect(text).toEqual(expect.stringContaining('Reprocessing'));
+      expect(screen.getByText(/Reprocessing/)).toBeInTheDocument();
     });
   });
 
   describe('resolvableIssues state', function () {
+    let container;
+
     beforeEach(() => {
       issue.resolveableIssues = 9;
-      wrapper = mountWithTheme(
+      const result = renderWithTheme(
         <ProcessingIssueHint issue={issue} orgId={orgId} projectId={projectId} />
       );
+      container = result.container;
     });
 
     it('displays a button', function () {
-      const button = wrapper.find('Button');
-      expect(button.length).toBe(1);
-      expect(button.props().to).toEqual(
-        `/settings/${orgId}/projects/${projectId}/processing-issues/`
-      );
+      const button = screen.getByRole('button', {name: 'Show details'});
+      expect(button).toBeInTheDocument();
+      // Button component with 'to' prop renders as React Router Link (no href in test env)
+      expect(button.tagName).toBe('A');
     });
 
     it('displays an icon', function () {
-      const icon = wrapper.find('IconSettings');
-      expect(icon.length).toBe(1);
+      const icon = container.querySelector('svg');
+      expect(icon).toBeInTheDocument();
     });
 
     it('displays text', function () {
-      const text = wrapper.find('Wrapper').text();
-      expect(text).toEqual(expect.stringContaining('pending reprocessing'));
+      expect(screen.getByText(/pending reprocessing/i)).toBeInTheDocument();
     });
   });
 
   describe('showProject state', function () {
     beforeEach(() => {
       issue.numIssues = 9;
-      wrapper = mountWithTheme(
+      renderWithTheme(
         <ProcessingIssueHint
           showProject
           issue={issue}
@@ -112,8 +116,7 @@ describe('ProcessingIssueHint', function () {
       );
     });
     it('displays the project slug', function () {
-      const text = wrapper.find('Wrapper').text();
-      expect(text).toEqual(expect.stringContaining(projectId));
+      expect(screen.getByText(projectId)).toBeInTheDocument();
     });
   });
 });

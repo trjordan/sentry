@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import KeyValueList from 'app/components/events/interfaces/keyValueList';
 
@@ -11,13 +11,16 @@ describe('KeyValueList', function () {
         {key: 'a', value: 'x', subject: 'a'},
         {key: 'b', value: 'y', subject: 'b'},
       ];
-      const wrapper = mountWithTheme(<KeyValueList data={data} />);
+      const {container} = renderWithTheme(<KeyValueList data={data} />);
 
-      expect(wrapper.find('td.key').at(0).text()).toEqual('a');
-      expect(wrapper.find('td.key').at(1).text()).toEqual('b');
+      const keys = container.querySelectorAll('td.key');
+      const vals = container.querySelectorAll('td.val');
 
-      expect(wrapper.find('td.val').at(0).text()).toEqual('x');
-      expect(wrapper.find('td.val').at(1).text()).toEqual('y');
+      expect(keys[0].textContent).toEqual('a');
+      expect(keys[1].textContent).toEqual('b');
+
+      expect(vals[0].textContent).toEqual('x');
+      expect(vals[1].textContent).toEqual('y');
     });
 
     it('should sort sort key/value pairs', function () {
@@ -25,13 +28,16 @@ describe('KeyValueList', function () {
         {key: 'b', value: 'y', subject: 'b'},
         {key: 'a', value: 'x', subject: 'a'},
       ];
-      const wrapper = mountWithTheme(<KeyValueList data={data} />);
+      const {container} = renderWithTheme(<KeyValueList data={data} />);
 
-      expect(wrapper.find('td.key').at(0).text()).toEqual('a');
-      expect(wrapper.find('td.key').at(1).text()).toEqual('b');
+      const keys = container.querySelectorAll('td.key');
+      const vals = container.querySelectorAll('td.val');
 
-      expect(wrapper.find('td.val').at(0).text()).toEqual('x');
-      expect(wrapper.find('td.val').at(1).text()).toEqual('y');
+      expect(keys[0].textContent).toEqual('a');
+      expect(keys[1].textContent).toEqual('b');
+
+      expect(vals[0].textContent).toEqual('x');
+      expect(vals[1].textContent).toEqual('y');
     });
 
     it('should use a single space for values that are an empty string', function () {
@@ -39,13 +45,16 @@ describe('KeyValueList', function () {
         {key: 'b', value: 'y', subject: 'b'},
         {key: 'a', value: '', subject: 'a'}, // empty string
       ];
-      const wrapper = mountWithTheme(<KeyValueList data={data} />);
+      const {container} = renderWithTheme(<KeyValueList data={data} />);
 
-      expect(wrapper.find('td.key').at(0).text()).toEqual('a');
-      expect(wrapper.find('td.key').at(1).text()).toEqual('b');
+      const keys = container.querySelectorAll('td.key');
+      const vals = container.querySelectorAll('td.val');
 
-      expect(wrapper.find('td.val').at(0).text()).toEqual('');
-      expect(wrapper.find('td.val').at(1).text()).toEqual('y');
+      expect(keys[0].textContent).toEqual('a');
+      expect(keys[1].textContent).toEqual('b');
+
+      expect(vals[0].textContent).toEqual('');
+      expect(vals[1].textContent).toEqual('y');
     });
 
     it('can sort key/value pairs with non-string values', function () {
@@ -53,27 +62,35 @@ describe('KeyValueList', function () {
         {key: 'b', value: {foo: 'bar'}, subject: 'b'},
         {key: 'a', value: [3, 2, 1], subject: 'a'},
       ];
-      const wrapper = mountWithTheme(<KeyValueList isContextData data={data} />);
+      const {container} = renderWithTheme(<KeyValueList isContextData data={data} />);
+
+      const keys = container.querySelectorAll('td.key');
 
       // Ignore values, more interested in if keys rendered + are sorted
-      expect(wrapper.find('td.key').at(0).text()).toEqual('a');
-      expect(wrapper.find('td.key').at(1).text()).toEqual('b');
+      expect(keys[0].textContent).toEqual('a');
+      expect(keys[1].textContent).toEqual('b');
     });
 
     it('should coerce non-strings into strings', function () {
       const data = [{key: 'a', value: false, subject: 'a'}];
-      const wrapper = mountWithTheme(<KeyValueList data={data} />);
+      const {container} = renderWithTheme(<KeyValueList data={data} />);
 
-      expect(wrapper.find('td.key').at(0).text()).toEqual('a');
-      expect(wrapper.find('td.val').at(0).text()).toEqual('false');
+      const keys = container.querySelectorAll('td.key');
+      const vals = container.querySelectorAll('td.val');
+
+      expect(keys[0].textContent).toEqual('a');
+      expect(vals[0].textContent).toEqual('false');
     });
 
     it("shouldn't blow up on null", function () {
       const data = [{key: 'a', value: null, subject: 'a'}];
-      const wrapper = mountWithTheme(<KeyValueList data={data} />);
+      const {container} = renderWithTheme(<KeyValueList data={data} />);
 
-      expect(wrapper.find('td.key').at(0).text()).toEqual('a');
-      expect(wrapper.find('td.val').at(0).text()).toEqual('null');
+      const keys = container.querySelectorAll('td.key');
+      const vals = container.querySelectorAll('td.val');
+
+      expect(keys[0].textContent).toEqual('a');
+      expect(vals[0].textContent).toEqual('null');
     });
   });
 });

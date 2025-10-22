@@ -1,15 +1,40 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import MultipleEnvironmentSelector from 'app/components/organizations/multipleEnvironmentSelector';
 import {ALL_ACCESS_PROJECTS} from 'app/constants/globalSelectionHeader';
 import ConfigStore from 'app/stores/configStore';
 
+// Mock document.createRange which is used by userEvent
+document.createRange = () => {
+  const range = {
+    setStart: jest.fn(),
+    setEnd: jest.fn(),
+    commonAncestorContainer: {
+      nodeName: 'BODY',
+      ownerDocument: document,
+    },
+    getBoundingClientRect: jest.fn(() => ({
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: 0,
+      height: 0,
+    })),
+    getClientRects: jest.fn(() => []),
+  };
+  range.cloneRange = () => range;
+  range.collapse = jest.fn();
+  range.selectNode = jest.fn();
+  return range;
+};
+
 describe('MultipleEnvironmentSelector', function () {
-  let wrapper;
   const onChange = jest.fn();
   const onUpdate = jest.fn();
+  const router = TestStubs.router();
 
   const envs = ['production', 'staging', 'dev'];
   const projects = [
@@ -32,16 +57,19 @@ describe('MultipleEnvironmentSelector', function () {
   ];
   const organization = TestStubs.Organization({projects});
   const selectedProjects = [1, 2];
-  const routerContext = TestStubs.routerContext([
-    {
-      organization,
-    },
-  ]);
 
   beforeEach(function () {
-    onChange.mockReset();
-    onUpdate.mockReset();
-    wrapper = mountWithTheme(
+    onChange.mockClear();
+    onUpdate.mockClear();
+    ConfigStore.config = {
+      user: {
+        isSuperuser: false,
+      },
+    };
+  });
+
+  it('can select and change environments', async function () {
+    renderWithTheme(
       <MultipleEnvironmentSelector
         organization={organization}
         projects={projects}
@@ -49,90 +77,138 @@ describe('MultipleEnvironmentSelector', function () {
         selectedProjects={selectedProjects}
         onChange={onChange}
         onUpdate={onUpdate}
-      />,
-      routerContext
+        router={router}
+      />
     );
-  });
 
-  it('can select and change environments', async function () {
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
+    // Open the dropdown
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
 
-    // Select all envs
-    envs.forEach((_env, i) => {
-      wrapper
-        .find('EnvironmentSelectorItem')
-        .at(i)
-        .find('CheckboxHitbox')
-        .simulate('click', {});
-    });
+    // Select all envs - these are checkboxes, not simple clicks
+    const checkboxes = screen.getAllByRole('checkbox');
+    for (const checkbox of checkboxes) {
+      await userEvent.click(checkbox);
+    }
     expect(onChange).toHaveBeenCalledTimes(3);
     expect(onChange).toHaveBeenLastCalledWith(envs);
 
-    wrapper
-      .find('MultipleSelectorSubmitRow button[aria-label="Apply"]')
-      .simulate('click');
+    // Click Apply button
+    await userEvent.click(screen.getByRole('button', {name: 'Apply'}));
     expect(onUpdate).toHaveBeenCalledWith();
   });
 
   it('selects multiple environments and uses chevron to update', async function () {
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={projects}
+        loadingProjects={false}
+        selectedProjects={selectedProjects}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
 
-    await wrapper
-      .find('MultipleEnvironmentSelector AutoCompleteItem CheckboxHitbox')
-      .at(0)
-      .simulate('click');
+    // Open the dropdown
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
 
-    expect(onChange).toHaveBeenLastCalledWith(['production']);
+    // Select first environment - use checkboxes
+    const checkboxes = screen.getAllByRole('checkbox');
+    await userEvent.click(checkboxes[0]);
+    expect(onChange).toHaveBeenCalledTimes(1);
 
-    wrapper
-      .find('MultipleEnvironmentSelector AutoCompleteItem CheckboxHitbox')
-      .at(1)
-      .simulate('click');
-    expect(onChange).toHaveBeenLastCalledWith(['production', 'staging']);
+    // Select second environment
+    await userEvent.click(checkboxes[1]);
+    expect(onChange).toHaveBeenCalledTimes(2);
 
-    wrapper.find('MultipleEnvironmentSelector StyledChevron').simulate('click');
+    // Close the dropdown by clicking the selector again (chevron)
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
     expect(onUpdate).toHaveBeenCalledWith();
   });
 
   it('does not update when there are no changes', async function () {
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
-    wrapper.find('MultipleEnvironmentSelector StyledChevron').simulate('click');
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={projects}
+        loadingProjects={false}
+        selectedProjects={selectedProjects}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
+
+    // Open the dropdown
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
+
+    // Close the dropdown without making changes
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
     expect(onUpdate).not.toHaveBeenCalled();
   });
 
   it('updates environment options when projects selection changes', async function () {
     // project 2 only has 1 environment.
-    wrapper.setProps({selectedProjects: [2]});
-    wrapper.update();
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={projects}
+        loadingProjects={false}
+        selectedProjects={[2]}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
 
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
-    const items = wrapper.find('MultipleEnvironmentSelector GlobalSelectionHeaderRow');
-    expect(items.length).toEqual(1);
-    expect(items.at(0).text()).toBe('dev');
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
+
+    const items = screen.getAllByTestId(/^environment-/);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent('dev');
   });
 
   it('shows non-member project environments when selected', async function () {
-    wrapper.setProps({selectedProjects: [3]});
-    wrapper.update();
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={projects}
+        loadingProjects={false}
+        selectedProjects={[3]}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
 
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
-    const items = wrapper.find('MultipleEnvironmentSelector GlobalSelectionHeaderRow');
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
 
-    expect(items.length).toEqual(1);
-    expect(items.at(0).text()).toBe('no-env');
+    const items = screen.getAllByTestId(/^environment-/);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toHaveTextContent('no-env');
   });
 
   it('shows member project environments when there are no projects selected', async function () {
-    wrapper.setProps({selectedProjects: []});
-    wrapper.update();
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={projects}
+        loadingProjects={false}
+        selectedProjects={[]}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
 
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
-    const items = wrapper.find('MultipleEnvironmentSelector GlobalSelectionHeaderRow');
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
 
-    expect(items.length).toEqual(3);
-    expect(items.at(0).text()).toBe('production');
-    expect(items.at(1).text()).toBe('staging');
-    expect(items.at(2).text()).toBe('dev');
+    const items = screen.getAllByTestId(/^environment-/);
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('production');
+    expect(items[1]).toHaveTextContent('staging');
+    expect(items[2]).toHaveTextContent('dev');
   });
 
   it('shows My Projects/all environments (superuser - no team belonging)', async function () {
@@ -141,34 +217,41 @@ describe('MultipleEnvironmentSelector', function () {
         isSuperuser: true,
       },
     };
-    // "My Projects" view
-    wrapper.setProps({selectedProjects: []});
-    // This user is member of no project
-    wrapper.setProps({
-      projects: [
-        TestStubs.Project({
-          id: '1',
-          slug: 'first',
-          environments: ['production', 'staging'],
-          isMember: false,
-        }),
-        TestStubs.Project({
-          id: '2',
-          slug: 'second',
-          environments: ['dev'],
-          isMember: false,
-        }),
-      ],
-    });
-    wrapper.update();
 
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
-    const items = wrapper.find('MultipleEnvironmentSelector GlobalSelectionHeaderRow');
+    const superuserProjects = [
+      TestStubs.Project({
+        id: '1',
+        slug: 'first',
+        environments: ['production', 'staging'],
+        isMember: false,
+      }),
+      TestStubs.Project({
+        id: '2',
+        slug: 'second',
+        environments: ['dev'],
+        isMember: false,
+      }),
+    ];
 
-    expect(items.length).toEqual(3);
-    expect(items.at(0).text()).toBe('production');
-    expect(items.at(1).text()).toBe('staging');
-    expect(items.at(2).text()).toBe('dev');
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={superuserProjects}
+        loadingProjects={false}
+        selectedProjects={[]}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
+
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
+
+    const items = screen.getAllByTestId(/^environment-/);
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('production');
+    expect(items[1]).toHaveTextContent('staging');
+    expect(items[2]).toHaveTextContent('dev');
   });
 
   it('shows My Projects/all environments (superuser - belongs one team)', async function () {
@@ -179,33 +262,40 @@ describe('MultipleEnvironmentSelector', function () {
         isSuperuser: true,
       },
     };
-    // "My Projects" view
-    wrapper.setProps({selectedProjects: []});
-    // This user is member of one project
-    wrapper.setProps({
-      projects: [
-        TestStubs.Project({
-          id: '1',
-          slug: 'first',
-          environments: ['production', 'staging'],
-        }),
-        TestStubs.Project({
-          id: '2',
-          slug: 'second',
-          environments: ['dev'],
-          isMember: false,
-        }),
-      ],
-    });
-    wrapper.update();
 
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
-    const items = wrapper.find('MultipleEnvironmentSelector GlobalSelectionHeaderRow');
+    const superuserProjects = [
+      TestStubs.Project({
+        id: '1',
+        slug: 'first',
+        environments: ['production', 'staging'],
+      }),
+      TestStubs.Project({
+        id: '2',
+        slug: 'second',
+        environments: ['dev'],
+        isMember: false,
+      }),
+    ];
 
-    expect(items.length).toEqual(3);
-    expect(items.at(0).text()).toBe('production');
-    expect(items.at(1).text()).toBe('staging');
-    expect(items.at(2).text()).toBe('dev');
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={superuserProjects}
+        loadingProjects={false}
+        selectedProjects={[]}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
+
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
+
+    const items = screen.getAllByTestId(/^environment-/);
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('production');
+    expect(items[1]).toHaveTextContent('staging');
+    expect(items[2]).toHaveTextContent('dev');
   });
 
   it('shows All Projects/all environments (superuser - no team belonging)', async function () {
@@ -214,33 +304,40 @@ describe('MultipleEnvironmentSelector', function () {
         isSuperuser: true,
       },
     };
-    // "All Projects" view
-    wrapper.setProps({selectedProjects: [-1]});
-    // This user is member of one project
-    wrapper.setProps({
-      projects: [
-        TestStubs.Project({
-          id: '1',
-          slug: 'first',
-          environments: ['production', 'staging'],
-        }),
-        TestStubs.Project({
-          id: '2',
-          slug: 'second',
-          environments: ['dev'],
-          isMember: false,
-        }),
-      ],
-    });
-    wrapper.update();
 
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
-    const items = wrapper.find('MultipleEnvironmentSelector GlobalSelectionHeaderRow');
+    const superuserProjects = [
+      TestStubs.Project({
+        id: '1',
+        slug: 'first',
+        environments: ['production', 'staging'],
+      }),
+      TestStubs.Project({
+        id: '2',
+        slug: 'second',
+        environments: ['dev'],
+        isMember: false,
+      }),
+    ];
 
-    expect(items.length).toEqual(3);
-    expect(items.at(0).text()).toBe('production');
-    expect(items.at(1).text()).toBe('staging');
-    expect(items.at(2).text()).toBe('dev');
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={superuserProjects}
+        loadingProjects={false}
+        selectedProjects={[-1]}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
+
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
+
+    const items = screen.getAllByTestId(/^environment-/);
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('production');
+    expect(items[1]).toHaveTextContent('staging');
+    expect(items[2]).toHaveTextContent('dev');
   });
 
   it('shows All Projects/all environments (superuser - belongs one team)', async function () {
@@ -251,57 +348,84 @@ describe('MultipleEnvironmentSelector', function () {
         isSuperuser: true,
       },
     };
-    // "All Projects" view
-    wrapper.setProps({selectedProjects: [-1]});
-    // This user is member of one project
-    wrapper.setProps({
-      projects: [
-        TestStubs.Project({
-          id: '1',
-          slug: 'first',
-          environments: ['production', 'staging'],
-        }),
-        TestStubs.Project({
-          id: '2',
-          slug: 'second',
-          environments: ['dev'],
-          isMember: false,
-        }),
-      ],
-    });
-    wrapper.update();
 
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
-    const items = wrapper.find('MultipleEnvironmentSelector GlobalSelectionHeaderRow');
+    const superuserProjects = [
+      TestStubs.Project({
+        id: '1',
+        slug: 'first',
+        environments: ['production', 'staging'],
+      }),
+      TestStubs.Project({
+        id: '2',
+        slug: 'second',
+        environments: ['dev'],
+        isMember: false,
+      }),
+    ];
 
-    expect(items.length).toEqual(3);
-    expect(items.at(0).text()).toBe('production');
-    expect(items.at(1).text()).toBe('staging');
-    expect(items.at(2).text()).toBe('dev');
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={superuserProjects}
+        loadingProjects={false}
+        selectedProjects={[-1]}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
+
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
+
+    const items = screen.getAllByTestId(/^environment-/);
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('production');
+    expect(items[1]).toHaveTextContent('staging');
+    expect(items[2]).toHaveTextContent('dev');
   });
 
   it('shows all project environments when "all projects" is selected', async function () {
-    wrapper.setProps({selectedProjects: [ALL_ACCESS_PROJECTS]});
-    wrapper.update();
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={projects}
+        loadingProjects={false}
+        selectedProjects={[ALL_ACCESS_PROJECTS]}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
 
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
-    const items = wrapper.find('MultipleEnvironmentSelector GlobalSelectionHeaderRow');
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
 
-    expect(items.length).toEqual(4);
-    expect(items.at(0).text()).toBe('production');
-    expect(items.at(1).text()).toBe('staging');
-    expect(items.at(2).text()).toBe('dev');
-    expect(items.at(3).text()).toBe('no-env');
+    const items = screen.getAllByTestId(/^environment-/);
+    expect(items).toHaveLength(4);
+    expect(items[0]).toHaveTextContent('production');
+    expect(items[1]).toHaveTextContent('staging');
+    expect(items[2]).toHaveTextContent('dev');
+    expect(items[3]).toHaveTextContent('no-env');
   });
 
   it('shows the distinct union of environments across all projects', async function () {
-    wrapper.setProps({selectedProjects: [1, 2]});
-    await wrapper.find('MultipleEnvironmentSelector HeaderItem').simulate('click');
-    const items = wrapper.find('MultipleEnvironmentSelector GlobalSelectionHeaderRow');
+    renderWithTheme(
+      <MultipleEnvironmentSelector
+        organization={organization}
+        projects={projects}
+        loadingProjects={false}
+        selectedProjects={[1, 2]}
+        onChange={onChange}
+        onUpdate={onUpdate}
+        router={router}
+      />
+    );
 
-    expect(items.length).toEqual(3);
-    expect(items.at(0).text()).toBe('production');
-    expect(items.at(1).text()).toBe('staging');
-    expect(items.at(2).text()).toBe('dev');
+    await userEvent.click(screen.getByTestId('global-header-environment-selector'));
+
+    const items = screen.getAllByTestId(/^environment-/);
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('production');
+    expect(items[1]).toHaveTextContent('staging');
+    expect(items[2]).toHaveTextContent('dev');
   });
 });

@@ -187,7 +187,7 @@ export default class TagDistributionMeter extends React.Component<Props> {
     }
 
     return (
-      <TagSummary>
+      <TagSummary data-test-id="group-tag-distribution-meter">
         {this.renderTitle()}
         {this.renderSegments()}
       </TagSummary>

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import User from 'app/components/events/contexts/user/user';
 import {FILTER_MASK} from 'app/constants';
@@ -12,32 +12,40 @@ describe('User', function () {
       name: FILTER_MASK,
     };
 
-    const wrapper1 = mountWithTheme(<User data={user1} />);
-    expect(wrapper1.find('[data-test-id="user-context-name-value"]').text()).toEqual(
-      FILTER_MASK
-    );
-    expect(wrapper1.find('LetterAvatar').text()).toEqual('?');
+    const {container, getByText, unmount} = renderWithTheme(<User data={user1} />);
+    expect(
+      container.querySelector('[data-test-id="user-context-name-value"]')
+    ).toHaveTextContent(FILTER_MASK);
+    expect(getByText('?')).toBeInTheDocument();
+    unmount();
 
     const user2 = {
       id: '26',
       email: FILTER_MASK,
     };
 
-    const wrapper2 = mountWithTheme(<User data={user2} />);
-    expect(wrapper2.find('[data-test-id="user-context-email-value"]').text()).toEqual(
-      FILTER_MASK
-    );
-    expect(wrapper2.find('LetterAvatar').text()).toEqual('?');
+    const {
+      container: container2,
+      getByText: getByText2,
+      unmount: unmount2,
+    } = renderWithTheme(<User data={user2} />);
+    expect(
+      container2.querySelector('[data-test-id="user-context-email-value"]')
+    ).toHaveTextContent(FILTER_MASK);
+    expect(getByText2('?')).toBeInTheDocument();
+    unmount2();
 
     const user3 = {
       id: '26',
       username: FILTER_MASK,
     };
 
-    const wrapper3 = mountWithTheme(<User data={user3} />);
-    expect(wrapper3.find('[data-test-id="user-context-username-value"]').text()).toEqual(
-      FILTER_MASK
+    const {container: container3, getByText: getByText3} = renderWithTheme(
+      <User data={user3} />
     );
-    expect(wrapper3.find('LetterAvatar').text()).toEqual('?');
+    expect(
+      container3.querySelector('[data-test-id="user-context-username-value"]')
+    ).toHaveTextContent(FILTER_MASK);
+    expect(getByText3('?')).toBeInTheDocument();
   });
 });

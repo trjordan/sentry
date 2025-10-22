@@ -1,11 +1,35 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import DropdownAutoComplete from 'app/components/dropdownAutoComplete';
 
+// Mock document.createRange which is used by userEvent
+document.createRange = () => {
+  const range = {
+    setStart: jest.fn(),
+    setEnd: jest.fn(),
+    commonAncestorContainer: {
+      nodeName: 'BODY',
+      ownerDocument: document,
+    },
+    getBoundingClientRect: jest.fn(() => ({
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+    })),
+    getClientRects: jest.fn(() => []),
+    cloneRange: jest.fn(function () {
+      return this;
+    }),
+  };
+  return range;
+};
+
 describe('DropdownAutoComplete', function () {
-  const routerContext = TestStubs.routerContext();
   const items = [
     {
       value: 'apple',
@@ -22,36 +46,41 @@ describe('DropdownAutoComplete', function () {
   ];
 
   it('has actor wrapper', function () {
-    const wrapper = mountWithTheme(
-      <DropdownAutoComplete items={items}>{() => 'Click Me!'}</DropdownAutoComplete>,
-      routerContext
+    renderWithTheme(
+      <DropdownAutoComplete items={items}>{() => 'Click Me!'}</DropdownAutoComplete>
     );
-    expect(wrapper.find('div[role="button"]')).toHaveLength(1);
-    expect(wrapper.find('div[role="button"]').text()).toBe('Click Me!');
+    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByRole('button')).toHaveTextContent('Click Me!');
   });
 
-  it('opens dropdown menu when actor is clicked', function () {
-    const wrapper = mountWithTheme(
-      <DropdownAutoComplete items={items}>{() => 'Click Me!'}</DropdownAutoComplete>,
-      routerContext
+  it('opens dropdown menu when actor is clicked', async function () {
+    const {container} = renderWithTheme(
+      <DropdownAutoComplete items={items}>{() => 'Click Me!'}</DropdownAutoComplete>
     );
-    wrapper.find('Actor[role="button"]').simulate('click');
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button'));
+    expect(
+      container.querySelector('[data-test-id="autocomplete-list"]')
+    ).toBeInTheDocument();
 
-    wrapper.find('Actor[role="button"]').simulate('click');
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button'));
+    expect(
+      container.querySelector('[data-test-id="autocomplete-list"]')
+    ).toBeInTheDocument();
   });
 
-  it('toggles dropdown menu when actor is clicked', function () {
-    const wrapper = mountWithTheme(
+  it('toggles dropdown menu when actor is clicked', async function () {
+    const {container} = renderWithTheme(
       <DropdownAutoComplete allowActorToggle items={items}>
         {() => 'Click Me!'}
-      </DropdownAutoComplete>,
-      routerContext
+      </DropdownAutoComplete>
     );
-    wrapper.find('Actor[role="button"]').simulate('click');
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(1);
-    wrapper.find('Actor[role="button"]').simulate('click');
-    expect(wrapper.find('BubbleWithMinWidth')).toHaveLength(0);
+    await userEvent.click(screen.getByRole('button'));
+    expect(
+      container.querySelector('[data-test-id="autocomplete-list"]')
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button'));
+    expect(
+      container.querySelector('[data-test-id="autocomplete-list"]')
+    ).not.toBeInTheDocument();
   });
 });

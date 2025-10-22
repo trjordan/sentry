@@ -58,7 +58,12 @@ class Value extends React.Component<Props, State> {
           <AnnotatedText value={formattedValue} meta={meta} />
         </FixedWidth>
         <Tooltip title={REGISTER_VIEWS[view]}>
-          <Toggle onClick={this.toggleView} size="xs" />
+          <Toggle
+            onClick={this.toggleView}
+            size="xs"
+            role="img"
+            aria-label={REGISTER_VIEWS[view]}
+          />
         </Tooltip>
       </InlinePre>
     );

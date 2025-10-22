@@ -72,7 +72,7 @@ class CommitRow extends React.Component<Props> {
           <AvatarWrapper>
             <Hovercard body={this.renderHovercardBody(author!)}>
               <UserAvatar size={36} user={author} />
-              <EmailWarningIcon>
+              <EmailWarningIcon data-test-id="email-warning">
                 <IconWarning size="xs" />
               </EmailWarningIcon>
             </Hovercard>

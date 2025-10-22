@@ -101,7 +101,7 @@ function GroupReleaseChart(props: Props) {
   }
 
   return (
-    <SidebarSection secondary title={title} className={className}>
+    <SidebarSection secondary title={title} className={className} data-test-id="group-release-chart">
       <MiniBarChart
         isGroupedByDate
         showTimeInTooltip

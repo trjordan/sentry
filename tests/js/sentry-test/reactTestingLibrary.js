@@ -1,11 +1,16 @@
 import React from 'react';
 import {cache} from '@emotion/css'; // eslint-disable-line emotion/no-vanilla
 import {CacheProvider, ThemeProvider} from '@emotion/react';
-import {fireEvent, render, screen, waitFor, within} from '@testing-library/react';
+import {act, configure, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
+import PropTypes from 'prop-types';
 import userEvent from '@testing-library/user-event';
 
 import GlobalModal from 'app/components/globalModal';
+import SentryTypes from 'app/sentryTypes';
 import {lightTheme} from 'app/utils/theme';
+
+// Configure RTL to use data-test-id instead of data-testid
+configure({testIdAttribute: 'data-test-id'});
 
 /**
  * Utility to wait for a single tick (for microtasks/promises to resolve).
@@ -20,31 +25,48 @@ export const tick = () => new Promise(resolve => setTimeout(resolve, 0));
  * This is the RTL equivalent of mountWithTheme from Enzyme.
  *
  * @param {React.ReactElement} ui - The component to render
- * @param {Object} options - Additional render options (no context support)
+ * @param {Object} options - Additional render options including context support
+ * @param {Object} options.context - Context to provide (supports organization, etc.)
  * @returns {RenderResult} RTL render result
  */
-export function renderWithTheme(ui, options) {
-  const Wrapper = ({children}) => (
-    <CacheProvider value={cache}>
-      <ThemeProvider theme={lightTheme}>{children}</ThemeProvider>
-    </CacheProvider>
-  );
+export function renderWithTheme(ui, options = {}) {
+  const {context, ...renderOptions} = options;
+  
+  class ContextProvider extends React.Component {
+    static childContextTypes = {
+      organization: SentryTypes.Organization,
+      project: SentryTypes.Project,
+      router: PropTypes.object,
+      location: PropTypes.object,
+    };
 
-  return render(ui, {wrapper: Wrapper, ...options});
+    getChildContext() {
+      const defaultContext = {
+        location: {query: {}},
+      };
+      return context ? {...defaultContext, ...context} : defaultContext;
+    }
+
+    render() {
+      return (
+        <CacheProvider value={cache}>
+          <ThemeProvider theme={lightTheme}>{this.props.children}</ThemeProvider>
+        </CacheProvider>
+      );
+    }
+  }
+
+  return render(ui, {wrapper: ContextProvider, ...renderOptions});
 }
 
 /**
  * Renders the GlobalModal component for testing modal interactions.
  * This is the RTL equivalent of mountGlobalModal from Enzyme.
  *
- * @returns {Promise<typeof screen>} Returns screen for querying modal content
+ * @returns {Object} Returns render result for snapshot/container access
  */
-export async function renderGlobalModal() {
-  renderWithTheme(<GlobalModal />);
-  await tick();
-  // No .update() needed - RTL automatically sees DOM changes
-  // Return screen for consistency with RTL patterns
-  return screen;
+export function renderGlobalModal() {
+  return renderWithTheme(<GlobalModal />);
 }
 
 /**
@@ -123,16 +145,36 @@ export function changeReactMentionsInput(value, options = {}) {
   textarea.focus();
 
   // Set up selection (react-mentions requires non-zero width selection)
-  textarea.selectionStart = 2;
-  textarea.selectionEnd = 3;
+  const currentValue = textarea.value || '';
+  if (currentValue.length >= 3) {
+    textarea.selectionStart = 2;
+    textarea.selectionEnd = 3;
+  } else {
+    textarea.selectionStart = 0;
+    textarea.selectionEnd = Math.min(1, currentValue.length);
+  }
 
   // Trigger select event
-  fireEvent.select(textarea);
+  fireEvent.select(textarea, {target: textarea});
 
-  // Update value and selection
-  fireEvent.change(textarea, {target: {value}});
-  textarea.selectionEnd = value.length;
+  // Get a fresh reference
+  const el = options.name
+    ? screen.getByRole('textbox', {name: options.name})
+    : screen.getByRole('textbox');
+
+  // Use the native property setter to bypass React's tracking
+  const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+    window.HTMLTextAreaElement.prototype,
+    'value'
+  ).set;
+  nativeInputValueSetter.call(el, value);
+  el.selectionEnd = value.length;
+
+  // The events themselves will read from el.value (which we just set)
+  // So we trigger events with the element directly
+  fireEvent.input(el);
+  fireEvent.change(el);
 }
 
 // Re-export RTL utilities for convenience
-export {screen, waitFor, within, fireEvent, userEvent, render};
+export {act, screen, waitFor, within, fireEvent, userEvent, render};

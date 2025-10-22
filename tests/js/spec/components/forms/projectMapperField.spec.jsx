@@ -6,7 +6,6 @@ import {selectByValue} from 'sentry-test/select-new';
 import {RenderField} from 'app/views/settings/components/forms/projectMapperField';
 
 describe('ProjectMapperField', () => {
-  let wrapper;
   const mappedDropdown = {
     placholder: 'hi',
     items: [
@@ -40,11 +39,11 @@ describe('ProjectMapperField', () => {
   });
 
   it('clicking add updates values with current dropdown values', () => {
-    wrapper = mountWithTheme(<RenderField {...props} />);
-    selectByValue(wrapper, '24', {control: true, name: 'project'});
-    selectByValue(wrapper, '1', {control: true, name: 'mappedDropdown'});
+    const wrapper = mountWithTheme(<RenderField {...props} />);
+    selectByValue(wrapper, '24', {name: 'project', control: true});
+    selectByValue(wrapper, '1', {name: 'mappedDropdown', control: true});
 
-    wrapper.find('AddProjectWrapper Button').simulate('click');
+    wrapper.find('Button[icon]').at(1).simulate('click');
 
     expect(onBlur).toHaveBeenCalledWith(
       [
@@ -67,8 +66,8 @@ describe('ProjectMapperField', () => {
       ['23', '2'],
       ['24', '1'],
     ];
-    wrapper = mountWithTheme(<RenderField {...props} value={existingValues} />);
-    wrapper.find('Button[aria-label="Delete"]').first().simulate('click');
+    const wrapper = mountWithTheme(<RenderField {...props} value={existingValues} />);
+    wrapper.find('Button[icon]').at(0).simulate('click');
 
     expect(onBlur).toHaveBeenCalledWith([['24', '1']], []);
     expect(onChange).toHaveBeenCalledWith([['24', '1']], []);

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, waitFor, act, fireEvent} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'app/api';
 import ConfigStore from 'app/stores/configStore';
@@ -45,17 +45,16 @@ describe('Sudo Modal', function () {
       ...ConfigStore.get('user'),
       hasPasswordAuth: true,
     });
-    const wrapper = mountWithTheme(
-      <App>{<div>placeholder content</div>}</App>,
-      TestStubs.routerContext()
-    );
+    renderWithTheme(<App>{<div>placeholder content</div>}</App>, {
+      context: TestStubs.routerContext(),
+    });
 
     const api = new Client();
     const successCb = jest.fn();
     const errorCb = jest.fn();
 
     // No Modal
-    expect(wrapper.find('ModalDialog')).toHaveLength(0);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     // Should return w/ `sudoRequired`
     api.request('/organizations/org-slug/', {
@@ -64,12 +63,14 @@ describe('Sudo Modal', function () {
       error: errorCb,
     });
 
-    await tick();
-    await tick();
-    wrapper.update();
+    // Wait for modal to appear with password input
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
     // Should have Modal + input
-    expect(wrapper.find('ModalDialog input')).toHaveLength(1);
+    const passwordInput = screen.getByLabelText(/password/i);
+    expect(passwordInput).toBeInTheDocument();
 
     // Original callbacks should not have been called
     expect(successCb).not.toHaveBeenCalled();
@@ -91,28 +92,31 @@ describe('Sudo Modal', function () {
     expect(sudoMock).not.toHaveBeenCalled();
 
     // "Sudo" auth
-    wrapper
-      .find('ModalDialog input[name="password"]')
-      .simulate('change', {target: {value: 'password'}});
+    await act(async () => {
+      fireEvent.change(passwordInput, {target: {value: 'password'}});
+    });
 
-    wrapper.find('ModalDialog form').simulate('submit');
-    wrapper.find('ModalDialog Button[type="submit"]').simulate('click');
+    const submitButton = screen.getByRole('button', {name: /confirm password/i});
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
 
-    await tick();
-    wrapper.update();
-
-    expect(sudoMock).toHaveBeenCalledWith(
-      '/auth/',
-      expect.objectContaining({
-        method: 'PUT',
-        data: {
-          password: 'password',
-        },
-      })
-    );
+    await waitFor(() => {
+      expect(sudoMock).toHaveBeenCalledWith(
+        '/auth/',
+        expect.objectContaining({
+          method: 'PUT',
+          data: {
+            password: 'password',
+          },
+        })
+      );
+    });
 
     // Retry API request
-    expect(successCb).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(successCb).toHaveBeenCalled();
+    });
     expect(orgDeleteMock).toHaveBeenCalledWith(
       '/organizations/org-slug/',
       expect.objectContaining({
@@ -120,11 +124,10 @@ describe('Sudo Modal', function () {
       })
     );
 
-    await tick();
-    wrapper.update();
-
     // Sudo Modal should be closed
-    expect(wrapper.find('ModalDialog')).toHaveLength(0);
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 
   it('shows button to redirect if user does not have password auth', async function () {
@@ -132,17 +135,16 @@ describe('Sudo Modal', function () {
       ...ConfigStore.get('user'),
       hasPasswordAuth: false,
     });
-    const wrapper = mountWithTheme(
-      <App>{<div>placeholder content</div>}</App>,
-      TestStubs.routerContext()
-    );
+    renderWithTheme(<App>{<div>placeholder content</div>}</App>, {
+      context: TestStubs.routerContext(),
+    });
 
     const api = new Client();
     const successCb = jest.fn();
     const errorCb = jest.fn();
 
     // No Modal
-    expect(wrapper.find('ModalDialog')).toHaveLength(0);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     // Should return w/ `sudoRequired`
     api.request('/organizations/org-slug/', {
@@ -151,12 +153,16 @@ describe('Sudo Modal', function () {
       error: errorCb,
     });
 
-    await tick();
-    await tick();
-    wrapper.update();
+    // Wait for modal to appear
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
 
-    // Should have Modal + input
-    expect(wrapper.find('ModalDialog input')).toHaveLength(0);
-    expect(wrapper.find('Button').prop('href')).toMatch('/auth/login/?next=%2F');
+    // Should have no password input
+    expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
+
+    // Should have redirect button
+    const redirectButton = screen.getByRole('link');
+    expect(redirectButton).toHaveAttribute('href', expect.stringMatching('/auth/login/?next=%2F'));
   });
 });

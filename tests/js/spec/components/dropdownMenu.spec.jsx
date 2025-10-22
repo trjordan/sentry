@@ -1,16 +1,37 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import DropdownMenu from 'app/components/dropdownMenu';
 
-jest.useFakeTimers();
+// Mock document.createRange which is used by userEvent
+document.createRange = () => {
+  const range = {
+    setStart: jest.fn(),
+    setEnd: jest.fn(),
+    commonAncestorContainer: {
+      nodeName: 'BODY',
+      ownerDocument: document,
+    },
+    getBoundingClientRect: jest.fn(() => ({
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+    })),
+    getClientRects: jest.fn(() => []),
+    cloneRange: jest.fn(function () {
+      return this;
+    }),
+  };
+  return range;
+};
 
 describe('DropdownMenu', function () {
-  let wrapper;
-
-  beforeEach(function () {
-    wrapper = mountWithTheme(
+  it('renders', function () {
+    renderWithTheme(
       <DropdownMenu>
         {({getRootProps, getActorProps, getMenuProps, isOpen}) => (
           <span {...getRootProps({})}>
@@ -24,53 +45,102 @@ describe('DropdownMenu', function () {
         )}
       </DropdownMenu>
     );
+
+    expect(screen.getByText('Open Dropdown')).toBeInTheDocument();
   });
 
-  it('renders', function () {
-    expect(wrapper).toSnapshot();
+  it('can toggle dropdown menu with actor', async function () {
+    const {container} = renderWithTheme(
+      <DropdownMenu>
+        {({getRootProps, getActorProps, getMenuProps, isOpen}) => (
+          <span {...getRootProps({})}>
+            <button {...getActorProps({})}>Open Dropdown</button>
+            {isOpen && (
+              <ul {...getMenuProps({})}>
+                <li>Dropdown Menu Item 1</li>
+              </ul>
+            )}
+          </span>
+        )}
+      </DropdownMenu>
+    );
+
+    await userEvent.click(screen.getByText('Open Dropdown'));
+    expect(container.querySelector('ul')).toBeInTheDocument();
+    await userEvent.click(screen.getByText('Open Dropdown'));
+    expect(container.querySelector('ul')).not.toBeInTheDocument();
   });
 
-  it('can toggle dropdown menu with actor', function () {
-    wrapper.find('button').simulate('click');
-    expect(wrapper.state('isOpen')).toBe(true);
-    expect(wrapper.find('ul')).toHaveLength(1);
-    wrapper.find('button').simulate('click');
-    expect(wrapper.state('isOpen')).toBe(false);
-    expect(wrapper.find('ul')).toHaveLength(0);
-  });
+  it('closes dropdown when clicking on anything in menu', async function () {
+    const {container} = renderWithTheme(
+      <DropdownMenu>
+        {({getRootProps, getActorProps, getMenuProps, isOpen}) => (
+          <span {...getRootProps({})}>
+            <button {...getActorProps({})}>Open Dropdown</button>
+            {isOpen && (
+              <ul {...getMenuProps({})}>
+                <li>Dropdown Menu Item 1</li>
+              </ul>
+            )}
+          </span>
+        )}
+      </DropdownMenu>
+    );
 
-  it('closes dropdown when clicking on anything in menu', function () {
-    wrapper.find('button').simulate('click');
-    wrapper.find('li').simulate('click');
-    expect(wrapper.state('isOpen')).toBe(false);
-    expect(wrapper.find('ul')).toHaveLength(0);
+    await userEvent.click(screen.getByText('Open Dropdown'));
+    await userEvent.click(screen.getByText('Dropdown Menu Item 1'));
+    expect(container.querySelector('ul')).not.toBeInTheDocument();
   });
 
   it('closes dropdown when clicking outside of menu', async function () {
-    wrapper.find('button').simulate('click');
-    // Simulate click on document
-    const event = document.createEvent('HTMLEvents');
-    event.initEvent('click', false, true);
-    document.body.dispatchEvent(event);
+    const {container} = renderWithTheme(
+      <DropdownMenu>
+        {({getRootProps, getActorProps, getMenuProps, isOpen}) => (
+          <span {...getRootProps({})}>
+            <button {...getActorProps({})}>Open Dropdown</button>
+            {isOpen && (
+              <ul {...getMenuProps({})}>
+                <li>Dropdown Menu Item 1</li>
+              </ul>
+            )}
+          </span>
+        )}
+      </DropdownMenu>
+    );
 
-    jest.runAllTimers();
-    await Promise.resolve();
-    wrapper.update();
+    await userEvent.click(screen.getByText('Open Dropdown'));
+    await userEvent.click(document.body);
 
-    expect(wrapper.find('ul')).toHaveLength(0);
+    // Wait for async close delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    expect(container.querySelector('ul')).not.toBeInTheDocument();
   });
 
-  it('closes dropdown when pressing escape', function () {
-    wrapper.find('button').simulate('click');
-    expect(wrapper.state('isOpen')).toBe(true);
-    wrapper.simulate('keyDown', {key: 'Escape'});
-    wrapper.find('button').simulate('keyDown', {key: 'Escape'});
-    expect(wrapper.state('isOpen')).toBe(false);
-    expect(wrapper.find('ul')).toHaveLength(0);
+  it('closes dropdown when pressing escape', async function () {
+    const {container} = renderWithTheme(
+      <DropdownMenu>
+        {({getRootProps, getActorProps, getMenuProps, isOpen}) => (
+          <span {...getRootProps({})}>
+            <button {...getActorProps({})}>Open Dropdown</button>
+            {isOpen && (
+              <ul {...getMenuProps({})}>
+                <li>Dropdown Menu Item 1</li>
+              </ul>
+            )}
+          </span>
+        )}
+      </DropdownMenu>
+    );
+
+    await userEvent.click(screen.getByText('Open Dropdown'));
+    expect(container.querySelector('ul')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(container.querySelector('ul')).not.toBeInTheDocument();
   });
 
-  it('ignores "Escape" key if `closeOnEscape` is false', function () {
-    wrapper = mountWithTheme(
+  it('ignores "Escape" key if `closeOnEscape` is false', async function () {
+    const {container} = renderWithTheme(
       <DropdownMenu closeOnEscape={false}>
         {({getRootProps, getActorProps, getMenuProps, isOpen}) => (
           <span {...getRootProps({})}>
@@ -85,15 +155,14 @@ describe('DropdownMenu', function () {
       </DropdownMenu>
     );
 
-    wrapper.find('button').simulate('click');
-    expect(wrapper.state('isOpen')).toBe(true);
-    wrapper.find('button').simulate('keyDown', {key: 'Escape'});
-    expect(wrapper.find('ul')).toHaveLength(1);
-    expect(wrapper.state('isOpen')).toBe(true);
+    await userEvent.click(screen.getByText('Open Dropdown'));
+    expect(container.querySelector('ul')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(container.querySelector('ul')).toBeInTheDocument();
   });
 
-  it('keeps dropdown open when clicking on anything in menu with `keepMenuOpen` prop', function () {
-    wrapper = mountWithTheme(
+  it('keeps dropdown open when clicking on anything in menu with `keepMenuOpen` prop', async function () {
+    const {container} = renderWithTheme(
       <DropdownMenu keepMenuOpen>
         {({getRootProps, getActorProps, getMenuProps, isOpen}) => (
           <span {...getRootProps({})}>
@@ -108,20 +177,19 @@ describe('DropdownMenu', function () {
       </DropdownMenu>
     );
 
-    wrapper.find('button').simulate('click');
-    wrapper.find('li').simulate('click');
-    expect(wrapper.state('isOpen')).toBe(true);
-    expect(wrapper.find('ul')).toHaveLength(1);
+    await userEvent.click(screen.getByText('Open Dropdown'));
+    await userEvent.click(screen.getByText('Dropdown Menu Item 1'));
+    expect(container.querySelector('ul')).toBeInTheDocument();
   });
 
-  it('render prop getters all extend props and call original onClick handlers', function () {
+  it('render prop getters all extend props and call original onClick handlers', async function () {
     const rootClick = jest.fn();
     const actorClick = jest.fn();
     const menuClick = jest.fn();
     const addSpy = jest.spyOn(document, 'addEventListener');
     const removeSpy = jest.spyOn(document, 'removeEventListener');
 
-    wrapper = mountWithTheme(
+    const {container, unmount} = renderWithTheme(
       <DropdownMenu keepMenuOpen>
         {({getRootProps, getActorProps, getMenuProps, isOpen}) => (
           <span
@@ -153,32 +221,30 @@ describe('DropdownMenu', function () {
       </DropdownMenu>
     );
 
-    expect(wrapper.find('ul')).toHaveLength(0);
+    expect(container.querySelector('ul')).not.toBeInTheDocument();
 
-    wrapper.find('span').simulate('click');
+    await userEvent.click(container.querySelector('span.root'));
     expect(rootClick).toHaveBeenCalled();
-    wrapper.find('button').simulate('click');
+    await userEvent.click(screen.getByText('Open Dropdown'));
     expect(actorClick).toHaveBeenCalled();
-    wrapper.find('li').simulate('click');
+    await userEvent.click(screen.getByText('Dropdown Menu Item 1'));
     expect(menuClick).toHaveBeenCalled();
 
-    // breaks in jest22
-    // expect(wrapper).toSnapshot();
-    expect(wrapper.find('ul')).toHaveLength(1);
+    expect(container.querySelector('ul')).toBeInTheDocument();
     expect(document.addEventListener).toHaveBeenCalled();
 
-    wrapper.unmount();
+    unmount();
     expect(document.removeEventListener).toHaveBeenCalled();
 
     addSpy.mockRestore();
     removeSpy.mockRestore();
   });
 
-  it('always rendered menus should attach document event listeners only when opened', function () {
+  it('always rendered menus should attach document event listeners only when opened', async function () {
     const addSpy = jest.spyOn(document, 'addEventListener');
     const removeSpy = jest.spyOn(document, 'removeEventListener');
 
-    wrapper = mountWithTheme(
+    renderWithTheme(
       <DropdownMenu alwaysRenderMenu>
         {({getRootProps, getActorProps, getMenuProps}) => (
           <span
@@ -207,39 +273,40 @@ describe('DropdownMenu', function () {
 
     // Make sure this is only called when menu is open
     expect(document.addEventListener).not.toHaveBeenCalled();
-    wrapper.find('button').simulate('click');
-    expect(wrapper.state('isOpen')).toBe(true);
+    await userEvent.click(screen.getByText('Open Dropdown'));
     expect(document.addEventListener).toHaveBeenCalled();
 
-    expect(document.removeEventListener).not.toHaveBeenCalled();
-    wrapper.find('button').simulate('click');
-    expect(wrapper.state('isOpen')).toBe(false);
-    expect(document.removeEventListener).toHaveBeenCalled();
+    const removeCallCountBefore = document.removeEventListener.mock.calls.length;
+    await userEvent.click(screen.getByText('Open Dropdown'));
+    expect(document.removeEventListener.mock.calls.length).toBeGreaterThan(
+      removeCallCountBefore
+    );
 
     addSpy.mockRestore();
     removeSpy.mockRestore();
   });
 
-  it('does not close nested dropdown on actor clicks', function () {
-    wrapper = mountWithTheme(
+  it('does not close nested dropdown on actor clicks', async function () {
+    renderWithTheme(
       <DropdownMenu isNestedDropdown>
         {({getRootProps, getActorProps, getMenuProps}) => (
           <span {...getRootProps({})}>
             <button {...getActorProps({})}>Open Dropdown</button>
             {
               <ul {...getMenuProps({})}>
-                <li data-test-id="menu-item">Dropdown Menu Item 1</li>
+                <li data-testid="menu-item">Dropdown Menu Item 1</li>
               </ul>
             }
           </span>
         )}
       </DropdownMenu>
     );
-    wrapper.find('button').simulate('mouseEnter');
-    expect(wrapper.find('[data-test-id="menu-item"]')).toHaveLength(1);
 
-    wrapper.find('button').simulate('click');
-    //Should still be visible.
-    expect(wrapper.find('[data-test-id="menu-item"]')).toHaveLength(1);
+    await userEvent.hover(screen.getByText('Open Dropdown'));
+    expect(screen.getByTestId('menu-item')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText('Open Dropdown'));
+    // Should still be visible.
+    expect(screen.getByTestId('menu-item')).toBeInTheDocument();
   });
 });

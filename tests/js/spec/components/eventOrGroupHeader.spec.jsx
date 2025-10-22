@@ -1,7 +1,7 @@
 import React from 'react';
 
-import {mountWithTheme, shallow} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import EventOrGroupHeader from 'app/components/eventOrGroupHeader';
 
@@ -17,7 +17,10 @@ const data = {
 };
 
 describe('EventOrGroupHeader', function () {
-  const {routerContext} = initializeOrg();
+  const {organization, router, routerContext: _routerContext} = initializeOrg({
+    router: {orgId: 'orgId'},
+  });
+
   describe('Group', function () {
     const groupData = {
       ...data,
@@ -26,41 +29,48 @@ describe('EventOrGroupHeader', function () {
     };
 
     it('renders with `type = error`', function () {
-      const component = mountWithTheme(
+      renderWithTheme(
         <EventOrGroupHeader
-          orgId="orgId"
+          organization={organization}
+          router={router}
+          params={{orgId: 'orgId'}}
+          location={router.location}
           data={{
             ...groupData,
             type: 'error',
           }}
-        />,
-        routerContext
+        />
       );
 
-      expect(component).toSnapshot();
+      expect(screen.getByText('metadata value')).toBeInTheDocument();
     });
 
     it('renders with `type = csp`', function () {
-      const component = mountWithTheme(
+      renderWithTheme(
         <EventOrGroupHeader
+          organization={organization}
+          router={router}
           params={{orgId: 'orgId'}}
+          location={router.location}
           data={{
             ...groupData,
             ...{
               type: 'csp',
             },
           }}
-        />,
-        routerContext
+        />
       );
 
-      expect(component).toSnapshot();
+      expect(screen.getByText('metadata directive')).toBeInTheDocument();
     });
 
     it('renders with `type = default`', function () {
-      const component = mountWithTheme(
+      renderWithTheme(
         <EventOrGroupHeader
+          organization={organization}
+          router={router}
           params={{orgId: 'orgId'}}
+          location={router.location}
           data={{
             ...groupData,
             type: 'default',
@@ -69,32 +79,35 @@ describe('EventOrGroupHeader', function () {
               title: 'metadata title',
             },
           }}
-        />,
-        routerContext
+        />
       );
 
-      expect(component).toSnapshot();
+      expect(screen.getByText('metadata title')).toBeInTheDocument();
     });
 
     it('renders metadata values in message for error events', function () {
-      const component = mountWithTheme(
+      renderWithTheme(
         <EventOrGroupHeader
+          organization={organization}
+          router={router}
           params={{orgId: 'orgId'}}
+          location={router.location}
           data={{
             ...groupData,
             type: 'error',
           }}
-        />,
-        routerContext
+        />
       );
-      const message = component.find('Message');
-      expect(message.text()).toEqual('metadata value');
+      expect(screen.getByText('metadata value')).toBeInTheDocument();
     });
 
     it('renders location', function () {
-      const component = mountWithTheme(
+      renderWithTheme(
         <EventOrGroupHeader
+          organization={organization}
+          router={router}
           params={{orgId: 'orgId'}}
+          location={router.location}
           data={{
             metadata: {
               filename: 'path/to/file.swift',
@@ -102,11 +115,10 @@ describe('EventOrGroupHeader', function () {
             platform: 'swift',
             type: 'error',
           }}
-        />,
-        routerContext
+        />
       );
-      const location = component.find('Location');
-      expect(location.text()).toEqual('in path/to/file.swift');
+      expect(screen.getByText(/in/)).toBeInTheDocument();
+      expect(screen.getByText('path/to/file.swift')).toBeInTheDocument();
     });
   });
 
@@ -120,39 +132,46 @@ describe('EventOrGroupHeader', function () {
     };
 
     it('renders with `type = error`', function () {
-      const component = mountWithTheme(
+      renderWithTheme(
         <EventOrGroupHeader
+          organization={organization}
+          router={router}
           params={{orgId: 'orgId'}}
+          location={router.location}
           data={{
             ...eventData,
             type: 'error',
           }}
-        />,
-        routerContext
+        />
       );
 
-      expect(component).toSnapshot();
+      expect(screen.getByText('metadata value')).toBeInTheDocument();
     });
 
     it('renders with `type = csp`', function () {
-      const component = mountWithTheme(
+      renderWithTheme(
         <EventOrGroupHeader
+          organization={organization}
+          router={router}
           params={{orgId: 'orgId'}}
+          location={router.location}
           data={{
             ...eventData,
             type: 'csp',
           }}
-        />,
-        routerContext
+        />
       );
 
-      expect(component).toSnapshot();
+      expect(screen.getByText('metadata directive')).toBeInTheDocument();
     });
 
     it('renders with `type = default`', function () {
-      const component = mountWithTheme(
+      renderWithTheme(
         <EventOrGroupHeader
+          organization={organization}
+          router={router}
           params={{orgId: 'orgId'}}
+          location={router.location}
           data={{
             ...eventData,
             type: 'default',
@@ -161,16 +180,19 @@ describe('EventOrGroupHeader', function () {
               title: 'metadata title',
             },
           }}
-        />,
-        routerContext
+        />
       );
 
-      expect(component).toSnapshot();
+      expect(screen.getByText('metadata title')).toBeInTheDocument();
     });
 
     it('hides level tag', function () {
-      const component = mountWithTheme(
+      renderWithTheme(
         <EventOrGroupHeader
+          organization={organization}
+          router={router}
+          params={{orgId: 'orgId'}}
+          location={router.location}
           projectId="projectId"
           hideLevel
           data={{
@@ -181,51 +203,54 @@ describe('EventOrGroupHeader', function () {
               title: 'metadata title',
             },
           }}
-        />,
-        routerContext
+        />
       );
 
-      expect(component).toSnapshot();
+      expect(screen.getByText('metadata title')).toBeInTheDocument();
     });
 
     it('keeps sort in link when query has sort', function () {
-      const query = {
-        sort: 'freq',
-      };
-
-      const component = shallow(
+      renderWithTheme(
         <EventOrGroupHeader
-          params={{orgId: 'orgId'}}
+          organization={organization}
           data={{
             ...eventData,
             type: 'default',
           }}
-          location={{query}}
+          {...router}
+          location={{
+            ...router.location,
+            query: {
+              ...router.location.query,
+              sort: 'freq',
+            },
+          }}
         />
       );
 
-      const title = component.dive().dive().instance().getTitle();
-
-      expect(title.props.to.query.sort).toEqual('freq');
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('href', expect.stringContaining('sort=freq'));
+      expect(link).toHaveAttribute('href', expect.stringContaining('_allp=1'));
     });
 
     it('lack of project adds allp parameter', function () {
       const query = {};
 
-      const component = shallow(
+      const {container} = renderWithTheme(
         <EventOrGroupHeader
+          organization={organization}
+          router={router}
           params={{orgId: 'orgId'}}
+          location={{...router.location, query}}
           data={{
             ...eventData,
             type: 'default',
           }}
-          location={{query}}
         />
       );
 
-      const title = component.dive().dive().instance().getTitle();
-
-      expect(title.props.to.query._allp).toEqual(1);
+      const link = container.querySelector('a');
+      expect(link).toHaveAttribute('href', expect.stringContaining('_allp=1'));
     });
   });
 });

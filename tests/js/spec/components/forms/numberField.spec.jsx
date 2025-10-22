@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {fireEvent, renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import {NumberField} from 'app/components/forms';
 import Form from 'app/components/forms/form';
@@ -8,42 +8,46 @@ import Form from 'app/components/forms/form';
 describe('NumberField', function () {
   describe('render()', function () {
     it('renders', function () {
-      const wrapper = mountWithTheme(<NumberField name="fieldName" />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<NumberField name="fieldName" />);
+      expect(container).toSnapshot();
     });
 
     it('renders with optional attributes', function () {
-      const wrapper = mountWithTheme(<NumberField name="fieldName" min={0} max={100} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(
+        <NumberField name="fieldName" min={0} max={100} />
+      );
+      expect(container).toSnapshot();
     });
 
     it('renders with value', function () {
-      const wrapper = mountWithTheme(<NumberField name="fieldName" value={5} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<NumberField name="fieldName" value={5} />);
+      expect(container).toSnapshot();
     });
 
     it('renders with form context', function () {
-      const wrapper = mountWithTheme(<NumberField name="fieldName" />, {
-        context: {
-          form: {
-            data: {
-              fieldName: 5,
-            },
-            errors: {},
-          },
-        },
-      });
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(
+        <Form initialData={{fieldName: 5}}>
+          <NumberField name="fieldName" />
+        </Form>
+      );
+      expect(container).toSnapshot();
     });
 
     it('doesnt save `NaN` when new value is empty string', function () {
-      const wrapper = mountWithTheme(
-        <Form onSubmit={() => {}}>
+      const onSubmit = jest.fn();
+      const {container} = renderWithTheme(
+        <Form onSubmit={onSubmit}>
           <NumberField name="fieldName" defaultValue="2" />
         </Form>
       );
-      wrapper.find('input').simulate('change', {target: {value: ''}});
-      expect(wrapper.state('data').fieldName).toBe('');
+      const input = screen.getByRole('spinbutton');
+      fireEvent.change(input, {target: {value: ''}});
+      fireEvent.submit(container.querySelector('form'));
+      expect(onSubmit).toHaveBeenCalledWith(
+        {fieldName: ''},
+        expect.anything(),
+        expect.anything()
+      );
     });
   });
 });

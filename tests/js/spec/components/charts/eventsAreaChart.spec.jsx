@@ -1,19 +1,28 @@
 import React from 'react';
 
 import {mockZoomRange} from 'sentry-test/charts';
-import {mountWithTheme} from 'sentry-test/enzyme';
 import {initializeOrg} from 'sentry-test/initializeOrg';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
+import BaseChart from 'app/components/charts/baseChart';
 import EventsChart from 'app/components/charts/eventsChart';
 
+jest.mock('app/components/charts/baseChart', () => {
+  return jest.fn().mockImplementation(() => <div data-testid="area-chart" />);
+});
+
 describe('EventsChart with legend', function () {
-  const {router, routerContext, org} = initializeOrg();
-  let wrapper;
+  const {router, org} = initializeOrg();
 
   beforeEach(function () {
     mockZoomRange(1543449600000, 1543708800000);
+    BaseChart.mockClear();
     MockApiClient.addMockResponse({
       url: `/organizations/${org.slug}/releases/`,
+      body: [],
+    });
+    MockApiClient.addMockResponse({
+      url: `/organizations/${org.slug}/releases/stats/`,
       body: [],
     });
     MockApiClient.addMockResponse({
@@ -26,29 +35,31 @@ describe('EventsChart with legend', function () {
         ],
       },
     });
+  });
 
-    wrapper = mountWithTheme(
+  it('renders a legend if enabled', function () {
+    renderWithTheme(
       <EventsChart
         api={new MockApiClient()}
         location={{query: {}}}
         organization={org}
-        project={[]}
-        environment={[]}
+        projects={[]}
+        environments={[]}
+        query=""
+        yAxis="count()"
         period="14d"
         start={null}
         end={null}
         utc={false}
         router={router}
         showLegend
-      />,
-      routerContext
+      />
     );
-  });
 
-  it('renders a legend if enabled', function () {
-    wrapper.update();
-
-    const areaChart = wrapper.find('AreaChart');
-    expect(areaChart.props().legend).toHaveProperty('data');
+    // Wait for tick to allow the mock API to resolve and component to render
+    return tick().then(() => {
+      expect(screen.getByTestId('area-chart')).toBeInTheDocument();
+      expect(BaseChart.mock.calls[0][0].legend).toHaveProperty('data');
+    });
   });
 });

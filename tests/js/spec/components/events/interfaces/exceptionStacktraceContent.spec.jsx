@@ -1,10 +1,9 @@
 import React from 'react';
 import cloneDeep from 'lodash/cloneDeep';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import ExceptionStacktraceContent from 'app/components/events/interfaces/exceptionStacktraceContent';
-import EmptyMessage from 'app/views/settings/components/emptyMessage';
 
 describe('ExceptionStacktraceContent', () => {
   const stacktrace = {
@@ -87,56 +86,63 @@ describe('ExceptionStacktraceContent', () => {
   };
 
   it('default behaviour', () => {
-    const wrapper = mountWithTheme(<ExceptionStacktraceContent {...props} />);
-    expect(wrapper).toSnapshot();
+    const {container} = renderWithTheme(<ExceptionStacktraceContent {...props} />);
+    expect(container).toSnapshot();
   });
 
   it('should return an emptyRender', () => {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <ExceptionStacktraceContent {...props} stacktrace={undefined} />
     );
-    expect(wrapper.isEmptyRender()).toBe(true);
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('should return the EmptyMessage component', () => {
-    const wrapper = mountWithTheme(<ExceptionStacktraceContent {...props} />);
-    const emptyMessageElement = wrapper.find(EmptyMessage).exists();
-    expect(emptyMessageElement).toBe(true);
+    const {container} = renderWithTheme(<ExceptionStacktraceContent {...props} />);
+    expect(container.querySelector('[data-test-id="empty-message"]')).toBeInTheDocument();
   });
 
   it('should not return the EmptyMessage component', () => {
     const modifiedProps = cloneDeep(props);
     modifiedProps.stacktrace.frames[0].inApp = true;
-    const wrapper = mountWithTheme(<ExceptionStacktraceContent {...modifiedProps} />);
-    const emptyMessageElement = wrapper.find(EmptyMessage).exists();
-    expect(emptyMessageElement).toBe(false);
+    const {container} = renderWithTheme(
+      <ExceptionStacktraceContent {...modifiedProps} />
+    );
+    expect(
+      container.querySelector('[data-test-id="empty-message"]')
+    ).not.toBeInTheDocument();
   });
 
   it('should render system frames if "stackView: app" and there are no inApp frames and is a chained exceptions', () => {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <ExceptionStacktraceContent {...props} chainedException />
     );
-    expect(wrapper.find('Line').length).toBe(2);
+    expect(
+      container.querySelectorAll('[data-test-id="stack-trace-content-v3-line"]').length
+    ).toBe(2);
   });
 
   it('should not render system frames if "stackView: app" and there are inApp frames and is a chained exceptions', () => {
     const modifiedProps = cloneDeep(props);
     modifiedProps.stacktrace.frames[0].inApp = true;
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <ExceptionStacktraceContent {...modifiedProps} chainedException />
     );
 
     // There must be two elements, one being the inApp frame and the other
     // the last frame which is non-app frame
-    expect(wrapper.find('Line').length).toBe(2);
+    const lines = container.querySelectorAll(
+      '[data-test-id="stack-trace-content-v3-line"]'
+    );
+    expect(lines.length).toBe(2);
 
     // inApp === true
-    expect(wrapper.find('.filename').at(1).text()).toBe(
+    expect(lines[1].querySelector('.filename')?.textContent).toBe(
       props.stacktrace.frames[0].filename
     );
 
     // inApp === false
-    expect(wrapper.find('.filename').at(0).text()).toBe(
+    expect(lines[0].querySelector('.filename')?.textContent).toBe(
       props.stacktrace.frames[1].filename
     );
   });

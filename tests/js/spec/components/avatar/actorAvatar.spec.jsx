@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import ActorAvatar from 'app/components/avatar/actorAvatar';
 import MemberListStore from 'app/stores/memberListStore';
@@ -30,36 +30,37 @@ describe('ActorAvatar', function () {
   afterEach(function () {});
 
   describe('render()', function () {
-    it('should show a gravatar when actor type is a user', function () {
-      const avatar = mountWithTheme(
+    it('should show a user avatar when actor type is a user', function () {
+      renderWithTheme(
         <ActorAvatar
           actor={{
             id: '1',
             name: 'Jane Bloggs',
             type: 'user',
           }}
+          hasTooltip={false}
         />
       );
-      expect(avatar).toSnapshot();
+      // User should render with letter avatar (since no email in store lookup and gravatar=false by default)
+      expect(screen.getByText('JB')).toBeInTheDocument();
     });
 
-    it('should not show a gravatar when actor type is a team', function () {
-      const avatar = mountWithTheme(
+    it('should show a letter avatar when actor type is a team', function () {
+      renderWithTheme(
         <ActorAvatar
           actor={{
             id: '3',
             name: 'COOL TEAM',
             type: 'team',
           }}
+          hasTooltip={false}
         />
       );
-      expect(avatar.find('LetterAvatar')).toHaveLength(1);
-      expect(avatar.find('Gravatar')).toHaveLength(0);
-      expect(avatar).toSnapshot();
+      expect(screen.getByText('CT')).toBeInTheDocument();
     });
 
     it('should return null when actor type is a unknown', function () {
-      const avatar = mountWithTheme(
+      const {container} = renderWithTheme(
         <ActorAvatar
           actor={{
             id: '3',
@@ -69,7 +70,7 @@ describe('ActorAvatar', function () {
         />
       );
 
-      expect(avatar.html()).toBe(null);
+      expect(container.firstChild).toBe(null);
     });
   });
 });

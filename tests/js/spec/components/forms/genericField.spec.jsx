@@ -1,12 +1,12 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import {FormState, GenericField} from 'app/components/forms';
 
 describe('GenericField', function () {
   it('renders text as TextInput', function () {
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <GenericField
         formState={FormState.READY}
         config={{
@@ -16,11 +16,13 @@ describe('GenericField', function () {
         }}
       />
     );
-    expect(wrapper.find('TextField')).toHaveLength(1);
+    // TextField renders a textbox role input
+    // Note: label includes asterisk because field is required by default
+    expect(screen.getByRole('textbox', {name: 'field label*'})).toBeInTheDocument();
   });
 
   it('renders text with choices as SelectCreatableField', function () {
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <GenericField
         formState={FormState.READY}
         config={{
@@ -31,6 +33,10 @@ describe('GenericField', function () {
         }}
       />
     );
-    expect(wrapper.find('SelectCreatableField')).toHaveLength(1);
+    // SelectCreatableField renders with a label and select input
+    // Query by the label text to verify the field is rendered
+    expect(screen.getByText('field label*')).toBeInTheDocument();
+    // Verify the select container is present
+    expect(screen.getByText('Select...')).toBeInTheDocument();
   });
 });

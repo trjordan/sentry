@@ -58,6 +58,8 @@ const BookmarkStar = ({
       isBookmarked={isBookmarked}
       onClick={toggleProjectBookmark}
       className={className}
+      role="button"
+      aria-label={isBookmarked ? t('Unbookmark Project') : t('Bookmark Project')}
     />
   );
 };

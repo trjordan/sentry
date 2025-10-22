@@ -1,13 +1,12 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import * as ActionCreators from 'app/actionCreators/formSearch';
 import FormSearchActions from 'app/actions/formSearchActions';
 import FormSource from 'app/components/search/sources/formSource';
 
 describe('FormSource', function () {
-  let wrapper;
   const searchMap = [
     {
       title: 'Test Field',
@@ -43,11 +42,10 @@ describe('FormSource', function () {
 
   it('can find a form field', async function () {
     const mock = jest.fn().mockReturnValue(null);
-    wrapper = mountWithTheme(<FormSource query="te">{mock}</FormSource>);
+    renderWithTheme(<FormSource query="te">{mock}</FormSource>);
 
     await tick();
     await tick();
-    wrapper.update();
     expect(mock).toHaveBeenLastCalledWith(
       expect.objectContaining({
         results: [
@@ -73,10 +71,9 @@ describe('FormSource', function () {
 
   it('does not find any form field ', async function () {
     const mock = jest.fn().mockReturnValue(null);
-    wrapper = mountWithTheme(<FormSource query="invalid">{mock}</FormSource>);
+    renderWithTheme(<FormSource query="invalid">{mock}</FormSource>);
 
     await tick();
-    wrapper.update();
     expect(mock).toHaveBeenCalledWith({
       isLoading: false,
       results: [],

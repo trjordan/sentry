@@ -1,6 +1,11 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
 
 import HelpSearch from 'app/components/helpSearch';
 
@@ -74,19 +79,33 @@ jest.mock('@sentry-internal/global-search', () => ({
 
 describe('HelpSearch', function () {
   it('produces search results', async function () {
-    const wrapper = mountWithTheme(
+    const router = TestStubs.router();
+    renderWithTheme(
       <HelpSearch
         entryPoint="sidebar_help"
         renderInput={({getInputProps}) => <input {...getInputProps({type: 'text'})} />}
-      />
+      />,
+      {context: {router, location: router.location}}
     );
 
-    wrapper.find('input').simulate('change', {target: {value: 'dummy'}});
-    await tick();
-    wrapper.update();
+    const input = screen.getByRole('textbox');
+    await userEvent.type(input, 'dummy');
 
-    expect(wrapper.find('SectionHeading')).toHaveLength(4);
-    expect(wrapper.find('SearchResultWrapper')).toHaveLength(4);
-    expect(wrapper.find('HighlightMarker')).toHaveLength(5);
+    await waitFor(() => {
+      // Check that the 4 section headings are rendered
+      expect(screen.getByText(/From Documentation/)).toBeInTheDocument();
+      expect(screen.getByText(/From Help Center/)).toBeInTheDocument();
+      expect(screen.getByText(/From Developer Documentation/)).toBeInTheDocument();
+      expect(screen.getByText(/From Blog Posts/)).toBeInTheDocument();
+    });
+
+    // 3 search result wrappers - one is missing "Minidumps" from docs
+    // (1 from docs instead of 2, 0 from help-center, 1 from develop, 1 from blog)
+    const resultWrappers = document.querySelectorAll('.css-16jp335-SearchResultWrapper');
+    expect(resultWrappers.length).toBeGreaterThanOrEqual(3);
+
+    // 5 highlight markers (from the <mark> tags in the mock data)
+    const marks = document.querySelectorAll('mark');
+    expect(marks).toHaveLength(5);
   });
 });

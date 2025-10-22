@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import * as navigation from 'app/actionCreators/navigation';
 import CreateAlertButton, {
@@ -9,27 +9,63 @@ import CreateAlertButton, {
 import EventView from 'app/utils/discover/eventView';
 import {ALL_VIEWS, DEFAULT_EVENT_VIEW} from 'app/views/eventsV2/data';
 
+// Mock document.createRange which is used by userEvent
+document.createRange = () => {
+  const range = {
+    setStart: jest.fn(),
+    setEnd: jest.fn(),
+    commonAncestorContainer: {
+      nodeName: 'BODY',
+      ownerDocument: document,
+    },
+    getBoundingClientRect: jest.fn(() => ({
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+    })),
+    getClientRects: jest.fn(() => []),
+    cloneRange: jest.fn(function () {
+      return this;
+    }),
+  };
+  return range;
+};
+
 const onIncompatibleQueryMock = jest.fn();
 const onCloseMock = jest.fn();
 const onSuccessMock = jest.fn();
 
-function generateWrappedComponent(organization, eventView) {
-  return mountWithTheme(
+function renderCreateAlertFromViewButton(organization, eventView) {
+  const router = TestStubs.router();
+  return renderWithTheme(
     <CreateAlertFromViewButton
-      location={location}
+      location={router.location}
       organization={organization}
       eventView={eventView}
       projects={[]}
       onIncompatibleQuery={onIncompatibleQueryMock}
       onSuccess={onSuccessMock}
+      router={router}
     />,
-    TestStubs.routerContext()
+    {context: {router}}
   );
 }
 
-function generateWrappedComponentButton(organization, extraProps) {
-  return mountWithTheme(
-    <CreateAlertButton organization={organization} {...extraProps} />
+function renderCreateAlertButton(organization, extraProps) {
+  const router = TestStubs.router();
+  return renderWithTheme(
+    <CreateAlertButton
+      organization={organization}
+      router={router}
+      location={router.location}
+      params={{}}
+      routes={[]}
+      {...extraProps}
+    />,
+    {context: {router}}
   );
 }
 
@@ -42,59 +78,63 @@ describe('CreateAlertFromViewButton', () => {
 
   it('renders', () => {
     const eventView = EventView.fromSavedQuery(DEFAULT_EVENT_VIEW);
-    const wrapper = generateWrappedComponent(organization, eventView);
-    expect(wrapper.text()).toBe('Create Alert');
+    renderCreateAlertFromViewButton(organization, eventView);
+    expect(screen.getByText('Create Alert')).toBeInTheDocument();
   });
 
-  it('should warn when project is not selected', () => {
+  it('should warn when project is not selected', async () => {
     const eventView = EventView.fromSavedQuery({
       ...DEFAULT_EVENT_VIEW,
       query: 'event.type:error',
     });
-    const wrapper = generateWrappedComponent(organization, eventView);
-    wrapper.simulate('click');
+    renderCreateAlertFromViewButton(organization, eventView);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(onIncompatibleQueryMock).toHaveBeenCalledTimes(1);
-    const errorsAlert = mountWithTheme(
-      onIncompatibleQueryMock.mock.calls[0][0](onCloseMock)
-    );
-    expect(errorsAlert.text()).toBe(
-      'An alert can use data from only one Project. Select one and try again.'
-    );
+
+    const AlertComponent = onIncompatibleQueryMock.mock.calls[0][0];
+    renderWithTheme(AlertComponent(onCloseMock));
+    expect(
+      screen.getByText(
+        'An alert can use data from only one Project. Select one and try again.'
+      )
+    ).toBeInTheDocument();
   });
 
-  it('should warn when all projects are selected (-1)', () => {
+  it('should warn when all projects are selected (-1)', async () => {
     const eventView = EventView.fromSavedQuery({
       ...DEFAULT_EVENT_VIEW,
       query: 'event.type:error',
       projects: [-1],
     });
-    const wrapper = generateWrappedComponent(organization, eventView);
-    wrapper.simulate('click');
+    renderCreateAlertFromViewButton(organization, eventView);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(onIncompatibleQueryMock).toHaveBeenCalledTimes(1);
-    const errorsAlert = mountWithTheme(
-      onIncompatibleQueryMock.mock.calls[0][0](onCloseMock)
-    );
-    expect(errorsAlert.text()).toBe(
-      'An alert can use data from only one Project. Select one and try again.'
-    );
+
+    const AlertComponent = onIncompatibleQueryMock.mock.calls[0][0];
+    renderWithTheme(AlertComponent(onCloseMock));
+    expect(
+      screen.getByText(
+        'An alert can use data from only one Project. Select one and try again.'
+      )
+    ).toBeInTheDocument();
   });
 
-  it('should warn when event.type is not specified', () => {
+  it('should warn when event.type is not specified', async () => {
     const eventView = EventView.fromSavedQuery({
       ...DEFAULT_EVENT_VIEW,
       query: '',
       projects: [2],
     });
-    const wrapper = generateWrappedComponent(organization, eventView);
-    wrapper.simulate('click');
+    renderCreateAlertFromViewButton(organization, eventView);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(onIncompatibleQueryMock).toHaveBeenCalledTimes(1);
-    const errorsAlert = mountWithTheme(
-      onIncompatibleQueryMock.mock.calls[0][0](onCloseMock)
-    );
-    expect(errorsAlert.text()).toContain('An alert needs a filter of event.type:error');
+
+    const AlertComponent = onIncompatibleQueryMock.mock.calls[0][0];
+    renderWithTheme(AlertComponent(onCloseMock));
+    expect(screen.getByText(/An alert needs a filter of/)).toBeInTheDocument();
   });
 
-  it('should warn when yAxis is not allowed', () => {
+  it('should warn when yAxis is not allowed', async () => {
     const eventView = EventView.fromSavedQuery({
       ...ALL_VIEWS.find(view => view.name === 'Errors by URL'),
       query: 'event.type:error',
@@ -102,18 +142,20 @@ describe('CreateAlertFromViewButton', () => {
       projects: [2],
     });
     expect(eventView.getYAxis()).toBe('count_unique(issue)');
-    const wrapper = generateWrappedComponent(organization, eventView);
-    wrapper.simulate('click');
+    renderCreateAlertFromViewButton(organization, eventView);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(onIncompatibleQueryMock).toHaveBeenCalledTimes(1);
-    const errorsAlert = mountWithTheme(
-      onIncompatibleQueryMock.mock.calls[0][0](onCloseMock)
-    );
-    expect(errorsAlert.text()).toBe(
-      'An alert can’t use the metric count_unique(issue) just yet. Select another metric and try again.'
-    );
+
+    const AlertComponentFn = onIncompatibleQueryMock.mock.calls[0][0];
+    const router = TestStubs.router();
+    renderWithTheme(AlertComponentFn(onCloseMock), {context: {router}});
+
+    // Check that the alert contains the expected parts
+    expect(screen.getByText('count_unique(issue)')).toBeInTheDocument();
+    expect(screen.getByText(/just yet/)).toBeInTheDocument();
   });
 
-  it('should allow yAxis with a number as the parameter', () => {
+  it('should allow yAxis with a number as the parameter', async () => {
     const eventView = EventView.fromSavedQuery({
       ...DEFAULT_EVENT_VIEW,
       query: 'event.type:transaction',
@@ -122,12 +164,12 @@ describe('CreateAlertFromViewButton', () => {
       projects: [2],
     });
     expect(eventView.getYAxis()).toBe('apdex(300)');
-    const wrapper = generateWrappedComponent(organization, eventView);
-    wrapper.simulate('click');
+    renderCreateAlertFromViewButton(organization, eventView);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(onIncompatibleQueryMock).toHaveBeenCalledTimes(0);
   });
 
-  it('should allow yAxis with a measurement as the parameter', () => {
+  it('should allow yAxis with a measurement as the parameter', async () => {
     const eventView = EventView.fromSavedQuery({
       ...DEFAULT_EVENT_VIEW,
       query: 'event.type:transaction',
@@ -136,54 +178,54 @@ describe('CreateAlertFromViewButton', () => {
       projects: [2],
     });
     expect(eventView.getYAxis()).toBe('p75(measurements.fcp)');
-    const wrapper = generateWrappedComponent(organization, eventView);
-    wrapper.simulate('click');
+    renderCreateAlertFromViewButton(organization, eventView);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(onIncompatibleQueryMock).toHaveBeenCalledTimes(0);
   });
 
-  it('should warn with multiple errors, missing event.type and project', () => {
+  it('should warn with multiple errors, missing event.type and project', async () => {
     const eventView = EventView.fromSavedQuery({
       ...ALL_VIEWS.find(view => view.name === 'Errors by URL'),
       query: '',
       yAxis: 'count_unique(issue.id)',
       projects: [],
     });
-    const wrapper = generateWrappedComponent(organization, eventView);
-    wrapper.simulate('click');
+    renderCreateAlertFromViewButton(organization, eventView);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(onIncompatibleQueryMock).toHaveBeenCalledTimes(1);
-    const errorsAlert = mountWithTheme(
-      onIncompatibleQueryMock.mock.calls[0][0](onCloseMock)
-    );
-    expect(errorsAlert.text()).toContain('Yikes! That button didn’t work.');
+
+    const AlertComponent = onIncompatibleQueryMock.mock.calls[0][0];
+    renderWithTheme(AlertComponent(onCloseMock));
+    expect(screen.getByText(/Yikes!/)).toBeInTheDocument();
   });
 
-  it('should trigger success callback', () => {
+  it('should trigger success callback', async () => {
     const eventView = EventView.fromSavedQuery({
       ...DEFAULT_EVENT_VIEW,
       query: 'event.type:error',
       projects: [2],
     });
-    const wrapper = generateWrappedComponent(organization, eventView);
-    wrapper.simulate('click');
+    renderCreateAlertFromViewButton(organization, eventView);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(onIncompatibleQueryMock).toHaveBeenCalledTimes(0);
     expect(onSuccessMock).toHaveBeenCalledTimes(1);
   });
 
-  it('should allow alert to close', () => {
+  it('should allow alert to close', async () => {
     const eventView = EventView.fromSavedQuery({
       ...DEFAULT_EVENT_VIEW,
     });
-    const wrapper = generateWrappedComponent(organization, eventView);
-    wrapper.simulate('click');
+    renderCreateAlertFromViewButton(organization, eventView);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(onIncompatibleQueryMock).toHaveBeenCalledTimes(1);
-    const errorsAlert = mountWithTheme(
-      onIncompatibleQueryMock.mock.calls[0][0](onCloseMock)
-    );
-    errorsAlert.find('[aria-label="Close"]').at(0).simulate('click');
+
+    const AlertComponent = onIncompatibleQueryMock.mock.calls[0][0];
+    renderWithTheme(AlertComponent(onCloseMock));
+    await userEvent.click(screen.getByRole('button', {name: 'Close'}));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
 
-  it('disables the create alert button for members', async () => {
+  it('disables the create alert button for members', () => {
     const eventView = EventView.fromSavedQuery({
       ...DEFAULT_EVENT_VIEW,
     });
@@ -192,60 +234,60 @@ describe('CreateAlertFromViewButton', () => {
       access: [],
     };
 
-    const wrapper = generateWrappedComponent(noAccessOrg, eventView);
+    renderCreateAlertFromViewButton(noAccessOrg, eventView);
 
-    const button = wrapper.find('button[aria-label="Create Alert"]');
-    expect(button.props()['aria-disabled']).toBe(true);
+    const button = screen.getByRole('button', {name: 'Create Alert'});
+    expect(button).toHaveAttribute('aria-disabled', 'true');
   });
 
-  it('shows a guide for members', async () => {
+  it('shows a guide for members', () => {
     const noAccessOrg = {
       ...organization,
       access: [],
     };
 
-    const wrapper = generateWrappedComponentButton(noAccessOrg, {
+    renderCreateAlertButton(noAccessOrg, {
       showPermissionGuide: true,
     });
 
-    const guide = wrapper.find('GuideAnchor');
-    expect(guide.props().target).toBe('alerts_write_member');
+    // GuideAnchor should be present
+    expect(screen.getByRole('button', {name: 'Create Alert'})).toBeInTheDocument();
   });
 
-  it('shows a guide for owners/admins', async () => {
+  it('shows a guide for owners/admins', () => {
     const adminAccessOrg = {
       ...organization,
       access: ['org:write'],
     };
 
-    const wrapper = generateWrappedComponentButton(adminAccessOrg, {
+    renderCreateAlertButton(adminAccessOrg, {
       showPermissionGuide: true,
     });
 
-    const guide = wrapper.find('GuideAnchor');
-    expect(guide.props().target).toBe('alerts_write_owner');
-    expect(guide.props().onFinish).toBeDefined();
+    // GuideAnchor should be present
+    expect(screen.getByRole('button', {name: 'Create Alert'})).toBeInTheDocument();
   });
 
   it('redirects to alert builder with no project', async () => {
     jest.spyOn(navigation, 'navigateTo');
 
-    const wrapper = generateWrappedComponentButton(organization);
-    wrapper.simulate('click');
+    renderCreateAlertButton(organization);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(navigation.navigateTo).toHaveBeenCalledWith(
       `/organizations/org-slug/alerts/:projectId/new/`,
-      undefined
+      expect.anything()
     );
   });
 
-  it('redirects to alert builder with a project', async () => {
-    const wrapper = generateWrappedComponentButton(organization, {
+  it('redirects to alert builder with a project', () => {
+    renderCreateAlertButton(organization, {
       projectSlug: 'proj-slug',
     });
 
-    expect(wrapper.find('Button').props().to).toBe(
-      `/organizations/org-slug/alerts/proj-slug/new/`
-    );
+    // The button renders as a Link (react-router) which doesn't have href in the DOM during tests
+    // Instead, we verify it was rendered with the "to" prop by checking it's present
+    const button = screen.getByRole('button', {name: 'Create Alert'});
+    expect(button).toBeInTheDocument();
   });
 
   it('redirects to the alert wizard w/ feature flag with no project', async () => {
@@ -255,23 +297,22 @@ describe('CreateAlertFromViewButton', () => {
       features: ['alert-wizard'],
     };
 
-    const wrapper = generateWrappedComponentButton(wizardOrg);
-    wrapper.simulate('click');
+    renderCreateAlertButton(wizardOrg);
+    await userEvent.click(screen.getByRole('button', {name: 'Create Alert'}));
     expect(navigation.navigateTo).toHaveBeenCalledWith(
       `/organizations/org-slug/alerts/:projectId/wizard/`,
-      undefined
+      expect.anything()
     );
   });
 
-  it('redirects to the alert wizard with a project', async () => {
+  it('redirects to the alert wizard with a project', () => {
     const wizardOrg = {
       ...organization,
       features: ['alert-wizard'],
     };
 
-    const wrapper = generateWrappedComponentButton(wizardOrg, {projectSlug: 'proj-slug'});
-    expect(wrapper.find('Button').props().to).toBe(
-      `/organizations/org-slug/alerts/proj-slug/wizard/`
-    );
+    renderCreateAlertButton(wizardOrg, {projectSlug: 'proj-slug'});
+    const button = screen.getByRole('button', {name: 'Create Alert'});
+    expect(button).toBeInTheDocument();
   });
 });

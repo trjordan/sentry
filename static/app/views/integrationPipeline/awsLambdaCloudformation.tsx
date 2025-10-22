@@ -255,6 +255,7 @@ export default class AwsLambdaCloudformation extends React.Component<Props, Stat
                 inline={false}
                 stacked
                 label={t('AWS Region')}
+                aria-label="AWS Region"
                 showHelpInTooltip
                 help={t(
                   'Your current region can be found on the right side of the header in AWS'

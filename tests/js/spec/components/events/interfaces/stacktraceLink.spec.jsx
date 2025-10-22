@@ -1,8 +1,9 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import {StacktraceLink} from 'app/components/events/interfaces/stacktraceLink';
+import ProjectsStore from 'app/stores/projectsStore';
 
 describe('StacktraceLink', function () {
   const org = TestStubs.Organization();
@@ -17,6 +18,7 @@ describe('StacktraceLink', function () {
 
   beforeEach(function () {
     MockApiClient.clearMockResponses();
+    ProjectsStore.loadInitialData([project]);
   });
 
   it('does not render setup CTA for members', async function () {
@@ -34,19 +36,22 @@ describe('StacktraceLink', function () {
       url: '/prompts-activity/',
       body: {},
     });
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <StacktraceLink
         frame={frame}
         event={event}
         projects={[project]}
         organization={memberOrg}
         lineNo={frame.lineNo}
-      />,
-      TestStubs.routerContext()
+      />
     );
-    await tick();
-    wrapper.update();
-    expect(wrapper.find('CodeMappingButtonContainer').exists()).toBe(false);
+
+    // The setup CTA should not be rendered for members
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Link your stack trace to your source code/i)
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('renders setup CTA with integration but no configs', async function () {
@@ -60,21 +65,22 @@ describe('StacktraceLink', function () {
       url: '/prompts-activity/',
       body: {},
     });
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <StacktraceLink
         frame={frame}
         event={event}
         projects={[project]}
         organization={org}
         lineNo={frame.lineNo}
-      />,
-      TestStubs.routerContext()
+      />
     );
-    await tick();
-    wrapper.update();
-    expect(wrapper.find('CodeMappingButtonContainer').text()).toContain(
-      'Link your stack trace to your source code.'
-    );
+
+    // Wait for the setup CTA text to appear
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Link your stack trace to your source code/i)
+      ).toBeInTheDocument();
+    });
   });
 
   it('renders source url link', async function () {
@@ -83,18 +89,25 @@ describe('StacktraceLink', function () {
       query: {file: frame.filename, commitId: 'master', platform},
       body: {config, sourceUrl: 'https://something.io', integrations: [integration]},
     });
-    const wrapper = mountWithTheme(
+    MockApiClient.addMockResponse({
+      method: 'GET',
+      url: '/prompts-activity/',
+      body: {},
+    });
+    renderWithTheme(
       <StacktraceLink
         frame={frame}
         event={event}
         projects={[project]}
         organization={org}
         lineNo={frame.lineNo}
-      />,
-      TestStubs.routerContext()
+      />
     );
-    expect(wrapper.state('match').sourceUrl).toEqual('https://something.io');
-    expect(wrapper.find('OpenInName').text()).toEqual('GitHub');
+
+    // Wait for the link to render
+    await waitFor(() => {
+      expect(screen.getByText('GitHub')).toBeInTheDocument();
+    });
   });
 
   it('renders file_not_found message', async function () {
@@ -109,21 +122,25 @@ describe('StacktraceLink', function () {
         attemptedUrl: 'https://something.io/blah',
       },
     });
-    const wrapper = mountWithTheme(
+    MockApiClient.addMockResponse({
+      method: 'GET',
+      url: '/prompts-activity/',
+      body: {},
+    });
+    renderWithTheme(
       <StacktraceLink
         frame={frame}
         event={event}
         projects={[project]}
         organization={org}
         lineNo={frame.lineNo}
-      />,
-      TestStubs.routerContext()
+      />
     );
-    expect(wrapper.state('match').sourceUrl).toBeFalsy();
-    expect(wrapper.find('CodeMappingButtonContainer').text()).toContain(
-      'Source file not found.'
-    );
-    expect(wrapper.state('match').attemptedUrl).toEqual('https://something.io/blah');
+
+    // Wait for error message to appear
+    await waitFor(() => {
+      expect(screen.getByText(/Source file not found/i)).toBeInTheDocument();
+    });
   });
 
   it('renders stack_root_mismatch message', async function () {
@@ -137,20 +154,25 @@ describe('StacktraceLink', function () {
         integrations: [integration],
       },
     });
-    const wrapper = mountWithTheme(
+    MockApiClient.addMockResponse({
+      method: 'GET',
+      url: '/prompts-activity/',
+      body: {},
+    });
+    renderWithTheme(
       <StacktraceLink
         frame={frame}
         event={event}
         projects={[project]}
         organization={org}
         lineNo={frame.lineNo}
-      />,
-      TestStubs.routerContext()
+      />
     );
-    expect(wrapper.state('match').sourceUrl).toBeFalsy();
-    expect(wrapper.find('CodeMappingButtonContainer').text()).toContain(
-      'Error matching your configuration.'
-    );
+
+    // Wait for error message to appear
+    await waitFor(() => {
+      expect(screen.getByText(/Error matching your configuration/i)).toBeInTheDocument();
+    });
   });
 
   it('renders default error message', async function () {
@@ -163,19 +185,28 @@ describe('StacktraceLink', function () {
         integrations: [integration],
       },
     });
-    const wrapper = mountWithTheme(
+    MockApiClient.addMockResponse({
+      method: 'GET',
+      url: '/prompts-activity/',
+      body: {},
+    });
+    renderWithTheme(
       <StacktraceLink
         frame={frame}
         event={event}
         projects={[project]}
         organization={org}
         lineNo={frame.lineNo}
-      />,
-      TestStubs.routerContext()
+      />
     );
-    expect(wrapper.state('match').sourceUrl).toBeFalsy();
-    expect(wrapper.find('CodeMappingButtonContainer').text()).toContain(
-      'There was an error encountered with the code mapping for this project'
-    );
+
+    // Wait for error message to appear
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /There was an error encountered with the code mapping for this project/i
+        )
+      ).toBeInTheDocument();
+    });
   });
 });

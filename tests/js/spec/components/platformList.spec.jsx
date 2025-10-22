@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import PlatformList from 'app/components/platformList';
 
@@ -8,34 +8,37 @@ describe('PlatformList', function () {
   const platforms = ['java', 'php', 'javascript', 'cocoa', 'ruby'];
 
   it('renders max of three icons from platforms', function () {
-    const wrapper = mountWithTheme(<PlatformList platforms={platforms} />);
-    const icons = wrapper.find('StyledPlatformIcon');
+    const {container} = renderWithTheme(<PlatformList platforms={platforms} />);
+    const icons = container.querySelectorAll('img');
     expect(icons).toHaveLength(3);
   });
 
   it('renders default if no platforms', function () {
-    const wrapper = mountWithTheme(<PlatformList platforms={[]} />);
-    const icons = wrapper.find('StyledPlatformIcon');
-    expect(icons.first().prop('platform')).toBe('default');
+    const {container} = renderWithTheme(<PlatformList platforms={[]} />);
+    const icons = container.querySelectorAll('img');
     expect(icons).toHaveLength(1);
   });
 
   it('displays counter', function () {
-    const wrapper = mountWithTheme(<PlatformList platforms={platforms} showCounter />);
-    const icons = wrapper.find('StyledPlatformIcon');
+    const {container} = renderWithTheme(
+      <PlatformList platforms={platforms} showCounter />
+    );
+    const icons = container.querySelectorAll('img');
     expect(icons).toHaveLength(3);
-    const counter = wrapper.find('Counter');
-    expect(counter.text()).toEqual('2+');
+    // Counter is a styled div with position: absolute in its styles
+    const counter = container.querySelector('div[class*="Counter"]');
+    expect(counter).toHaveTextContent('2+');
   });
 
   it('displays counter according to the max value', function () {
     const max = 2;
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <PlatformList platforms={platforms} max={max} showCounter />
     );
-    const icons = wrapper.find('StyledPlatformIcon');
+    const icons = container.querySelectorAll('img');
     expect(icons).toHaveLength(max);
-    const counter = wrapper.find('Counter');
-    expect(counter.text()).toEqual(`${platforms.length - max}+`);
+    // Counter is a styled div with position: absolute in its styles
+    const counter = container.querySelector('div[class*="Counter"]');
+    expect(counter).toHaveTextContent(`${platforms.length - max}+`);
   });
 });

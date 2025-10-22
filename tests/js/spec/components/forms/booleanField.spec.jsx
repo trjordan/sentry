@@ -12,7 +12,7 @@ describe('BooleanField', function () {
     });
 
     it('renders with form context', function () {
-      const wrapper = mountWithTheme(<BooleanField name="fieldName" />, {
+      const wrapper = mountWithTheme(<BooleanField name="fieldName" defaultValue />, {
         context: {
           form: {
             data: {

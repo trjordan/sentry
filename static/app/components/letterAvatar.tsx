@@ -76,7 +76,7 @@ const LetterAvatar = styled(
     suggested,
     ...props
   }: LetterAvatarProps) => (
-    <svg ref={forwardedRef} viewBox="0 0 120 120" {...props}>
+    <svg ref={forwardedRef} viewBox="0 0 120 120" data-test-id="letter-avatar" {...props}>
       <rect
         x="0"
         y="0"

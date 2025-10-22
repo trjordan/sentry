@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, tick} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'app/api';
 import SessionHistory from 'app/views/settings/account/accountSecurity/sessionHistory';
@@ -40,10 +40,14 @@ describe('AccountSecuritySessionHistory', function () {
       ],
     });
 
-    const wrapper = mountWithTheme(<SessionHistory />, TestStubs.routerContext());
+    renderWithTheme(<SessionHistory />, {
+      context: TestStubs.routerContext().context,
+    });
 
-    wrapper.update();
     await tick();
-    expect(wrapper.find('SessionRow')).toHaveLength(2);
+
+    // Verify both IP addresses are rendered
+    expect(screen.getByText('127.0.0.1')).toBeInTheDocument();
+    expect(screen.getByText('192.168.0.1')).toBeInTheDocument();
   });
 });

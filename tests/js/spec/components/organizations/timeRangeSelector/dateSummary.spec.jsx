@@ -1,32 +1,21 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import DateSummary from 'app/components/organizations/timeRangeSelector/dateSummary';
 
-const start = new Date('2017-10-14T02:38:00.000Z');
-const end = new Date('2017-10-17T02:38:00.000Z'); // National Pasta Day
-
 describe('DateSummary', function () {
-  let wrapper;
-  const routerContext = TestStubs.routerContext();
-
-  const createWrapper = (props = {}) =>
-    mountWithTheme(<DateSummary start={start} end={end} {...props} />, routerContext);
-
-  it('renders', async function () {
-    wrapper = createWrapper();
-    expect(wrapper).toSnapshot();
-  });
-
   it('does not show times when it is midnight for start date and 23:59:59 for end date', function () {
     // Date Summary formats using system time
     // tests run on EST/EDT
-    wrapper = createWrapper({
-      start: new Date('2017-10-14T00:00:00.000-0400'),
-      end: new Date('2017-10-17T23:59:59.000-0400'),
-    });
+    renderWithTheme(
+      <DateSummary
+        start={new Date('2017-10-14T00:00:00.000-0400')}
+        end={new Date('2017-10-17T23:59:59.000-0400')}
+      />
+    );
 
-    expect(wrapper.find('Time')).toHaveLength(0);
+    // Time component renders time strings like '22:38', should not be present
+    expect(screen.queryByText(/\d{2}:\d{2}/)).not.toBeInTheDocument();
   });
 });

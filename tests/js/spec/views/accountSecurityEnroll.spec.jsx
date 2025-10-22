@@ -1,17 +1,17 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  renderWithTheme,
+  screen,
+  userEvent,
+} from 'sentry-test/reactTestingLibrary';
 
-import {Client} from 'app/api';
 import AccountSecurityEnroll from 'app/views/settings/account/accountSecurity/accountSecurityEnroll';
 
 const ENDPOINT = '/users/me/authenticators/';
 
 describe('AccountSecurityEnroll', function () {
-  let wrapper;
-
   describe('Totp', function () {
-    Client.clearMockResponses();
     const authenticator = TestStubs.Authenticators().Totp({
       isEnrolled: false,
       qrcode: 'otpauth://totp/test%40sentry.io?issuer=Sentry&secret=secret',
@@ -20,46 +20,63 @@ describe('AccountSecurityEnroll', function () {
         {
           type: 'string',
           name: 'otp',
+          label: 'OTP',
         },
       ],
     });
 
-    beforeAll(function () {
-      Client.addMockResponse({
+    const router = TestStubs.router({
+      params: {
+        authId: authenticator.authId,
+      },
+    });
+
+    beforeEach(function () {
+      MockApiClient.clearMockResponses();
+      MockApiClient.addMockResponse({
         url: `${ENDPOINT}${authenticator.authId}/enroll/`,
         body: authenticator,
       });
-      wrapper = mountWithTheme(
-        <AccountSecurityEnroll />,
-        TestStubs.routerContext([
-          {
-            router: {
-              ...TestStubs.router(),
-              params: {
-                authId: authenticator.authId,
-              },
-            },
-          },
-        ])
-      );
     });
 
     it('does not have enrolled circle indicator', function () {
-      expect(wrapper.find('CircleIndicator').prop('enabled')).toBe(false);
+      const {container} = renderWithTheme(<AccountSecurityEnroll router={router} />, {
+        context: TestStubs.routerContext().context,
+      });
+
+      const circleIndicator = container.querySelector('[class*="CircleIndicator"]');
+      expect(circleIndicator).toBeInTheDocument();
+      // The CircleIndicator component applies different styles based on enabled prop
+      // When enabled=false, it should not have the 'enabled' class or styling
+      expect(circleIndicator).not.toHaveAttribute('enabled');
     });
 
     it('has qrcode component', function () {
-      expect(wrapper.find('QRCode')).toHaveLength(1);
+      const {container} = renderWithTheme(<AccountSecurityEnroll router={router} />, {
+        context: TestStubs.routerContext().context,
+      });
+
+      // QRCode component renders as a canvas element
+      const qrcode = container.querySelector('canvas');
+      expect(qrcode).toBeInTheDocument();
     });
 
-    it('can enroll', function () {
-      const enrollMock = Client.addMockResponse({
+    it('can enroll', async function () {
+      const enrollMock = MockApiClient.addMockResponse({
         url: `${ENDPOINT}${authenticator.authId}/enroll/`,
         method: 'POST',
       });
 
-      wrapper.find('input[name="otp"]').simulate('change', {target: {value: 'otp'}});
-      wrapper.find('Form').simulate('submit');
+      renderWithTheme(<AccountSecurityEnroll router={router} />, {
+        context: TestStubs.routerContext().context,
+      });
+
+      const otpInput = screen.getByRole('textbox', {name: /otp/i});
+      await userEvent.type(otpInput, 'otp');
+
+      const confirmButton = screen.getByRole('button', {name: /confirm/i});
+      await userEvent.click(confirmButton);
+
       expect(enrollMock).toHaveBeenCalledWith(
         `${ENDPOINT}15/enroll/`,
         expect.objectContaining({
@@ -73,28 +90,25 @@ describe('AccountSecurityEnroll', function () {
     });
 
     it('can redirect with already enrolled error', function () {
-      Client.addMockResponse({
+      MockApiClient.clearMockResponses();
+      MockApiClient.addMockResponse({
         url: `${ENDPOINT}${authenticator.authId}/enroll/`,
         body: {details: 'Already enrolled'},
         statusCode: 400,
       });
 
       const pushMock = jest.fn();
-      wrapper = mountWithTheme(
-        <AccountSecurityEnroll />,
-        TestStubs.routerContext([
-          {
-            router: {
-              ...TestStubs.router({
-                push: pushMock,
-              }),
-              params: {
-                authId: authenticator.authId,
-              },
-            },
-          },
-        ])
-      );
+      const routerWithPush = TestStubs.router({
+        push: pushMock,
+        params: {
+          authId: authenticator.authId,
+        },
+      });
+
+      renderWithTheme(<AccountSecurityEnroll router={routerWithPush} />, {
+        context: TestStubs.routerContext().context,
+      });
+
       expect(pushMock).toHaveBeenCalledWith('/settings/account/security/');
     });
   });

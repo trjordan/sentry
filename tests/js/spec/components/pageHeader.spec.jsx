@@ -1,12 +1,10 @@
-import React from 'react';
-
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen} from 'sentry-test/reactTestingLibrary';
 
 import PageHeading from 'app/components/pageHeading';
 
 describe('PageHeading', function () {
   it('renders', function () {
-    const wrapper = mountWithTheme(<PageHeading>New Header</PageHeading>);
-    expect(wrapper).toSnapshot();
+    render(<PageHeading>New Header</PageHeading>);
+    expect(screen.getByRole('heading', {name: 'New Header'})).toBeInTheDocument();
   });
 });

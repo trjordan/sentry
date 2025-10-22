@@ -1,16 +1,15 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import OrganizationBadge from 'app/components/idBadge/organizationBadge';
 
 describe('OrganizationBadge', function () {
   it('renders with Avatar and organization name', function () {
-    const wrapper = mountWithTheme(
-      <OrganizationBadge organization={TestStubs.Organization()} />,
-      TestStubs.routerContext()
+    const {container} = renderWithTheme(
+      <OrganizationBadge organization={TestStubs.Organization()} />
     );
-    expect(wrapper.find('StyledAvatar')).toHaveLength(1);
-    expect(wrapper.find('BadgeDisplayName').text()).toEqual('org-slug');
+    expect(container.querySelector('.avatar')).toBeInTheDocument();
+    expect(screen.getByText('org-slug')).toBeInTheDocument();
   });
 });

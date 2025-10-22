@@ -1,83 +1,94 @@
 import React from 'react';
+import {createEvent} from '@testing-library/react';
 
-import {mountWithTheme, shallow} from 'sentry-test/enzyme';
-import {mountGlobalModal} from 'sentry-test/modal';
+import {
+  fireEvent,
+  renderGlobalModal,
+  renderWithTheme,
+  screen,
+  userEvent,
+} from 'sentry-test/reactTestingLibrary';
 
 import Confirm from 'app/components/confirm';
 
 describe('Confirm', function () {
-  it('renders', function () {
+  it('renders', async function () {
     const mock = jest.fn();
-    const wrapper = shallow(
+    renderWithTheme(
       <Confirm message="Are you sure?" onConfirm={mock}>
         <button>Confirm?</button>
-      </Confirm>,
-      TestStubs.routerContext()
+      </Confirm>
     );
 
-    expect(wrapper).toSnapshot();
+    await userEvent.click(screen.getByRole('button', {name: 'Confirm?'}));
+
+    await renderGlobalModal();
+
+    const dialogs = screen.getAllByRole('dialog');
+    const dialog = dialogs.find(d => d.classList.contains('modal'));
+    expect(dialog).toBeInTheDocument();
   });
 
   it('clicking action button opens Modal', async function () {
     const mock = jest.fn();
-    const wrapper = shallow(
+    renderWithTheme(
       <Confirm message="Are you sure?" onConfirm={mock}>
         <button>Confirm?</button>
-      </Confirm>,
-      TestStubs.routerContext()
+      </Confirm>
     );
 
-    wrapper.find('button').simulate('click');
+    await userEvent.click(screen.getByRole('button', {name: 'Confirm?'}));
 
-    const modal = await mountGlobalModal();
+    await renderGlobalModal();
 
-    expect(modal.find('Modal[show=true]').exists()).toBe(true);
+    const dialogs = screen.getAllByRole('dialog');
+    const dialog = dialogs.find(d => d.classList.contains('modal'));
+    expect(dialog).toBeInTheDocument();
   });
 
   it('clicks Confirm in modal and calls `onConfirm` callback', async function () {
     const mock = jest.fn();
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <Confirm message="Are you sure?" onConfirm={mock}>
         <button>Confirm?</button>
-      </Confirm>,
-      TestStubs.routerContext()
+      </Confirm>
     );
 
     expect(mock).not.toHaveBeenCalled();
 
-    wrapper.find('button').simulate('click');
+    await userEvent.click(screen.getByRole('button', {name: 'Confirm?'}));
 
-    const modal = await mountGlobalModal();
+    await renderGlobalModal();
 
-    // Click "Confirm" button, should be last button
-    modal.find('Button').last().simulate('click');
+    // Click "Confirm" button in the modal (there may be multiple buttons with same text)
+    const allConfirmButtons = screen.getAllByRole('button', {name: 'Confirm'});
+    const modalConfirmButton = allConfirmButtons.find(btn =>
+      btn.closest('[role="dialog"]')
+    );
 
-    await tick();
-    modal.update();
+    await userEvent.click(modalConfirmButton);
 
-    expect(modal.find('Modal[show=true]').exists()).toBe(false);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(mock).toHaveBeenCalled();
     expect(mock.mock.calls).toHaveLength(1);
   });
 
   it('can stop propagation on the event', function () {
     const mock = jest.fn();
-    const wrapper = shallow(
+
+    renderWithTheme(
       <Confirm message="Are you sure?" onConfirm={mock} stopPropagation>
         <button>Confirm?</button>
-      </Confirm>,
-      TestStubs.routerContext()
+      </Confirm>
     );
 
     expect(mock).not.toHaveBeenCalled();
 
-    const event = {
-      stopPropagation: jest.fn(),
-    };
+    const button = screen.getByRole('button', {name: 'Confirm?'});
+    const clickEvent = createEvent.click(button);
+    clickEvent.stopPropagation = jest.fn();
 
-    wrapper.find('button').simulate('click', event);
-    wrapper.update();
-
-    expect(event.stopPropagation).toHaveBeenCalledTimes(1);
+    fireEvent(button, clickEvent);
+    expect(clickEvent.stopPropagation).toHaveBeenCalled();
   });
 });

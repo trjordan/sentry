@@ -1,174 +1,264 @@
 import React from 'react';
-import {act} from 'react-dom/test-utils';
 
-import {createListeners} from 'sentry-test/createListeners';
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  fireEvent,
+  renderWithTheme,
+  screen,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
 
 import EditableText from 'app/components/editableText';
 
 const currentValue = 'foo';
 
-function renderedComponent(onChange: () => void, newValue = 'bar') {
-  const wrapper = mountWithTheme(
-    <EditableText value={currentValue} onChange={onChange} />
-  );
-
-  let label = wrapper.find('Label');
-  expect(label.text()).toEqual(currentValue);
-
-  let inputWrapper = wrapper.find('InputWrapper');
-  expect(inputWrapper.length).toEqual(0);
-
-  const styledIconEdit = wrapper.find('IconEdit');
-  expect(styledIconEdit.length).toEqual(1);
-
-  label.simulate('click');
-
-  label = wrapper.find('Label');
-  expect(inputWrapper.length).toEqual(0);
-
-  inputWrapper = wrapper.find('InputWrapper');
-  expect(inputWrapper.length).toEqual(1);
-
-  const styledInput = wrapper.find('StyledInput');
-  expect(styledInput.length).toEqual(1);
-  styledInput.simulate('change', {target: {value: newValue}});
-
-  const inputLabel = wrapper.find('InputLabel');
-  expect(inputLabel.text()).toEqual(newValue);
-
-  return wrapper;
-}
-
 describe('EditableText', function () {
   const newValue = 'bar';
 
-  it('edit value and click outside of the component', function () {
-    const fireEvent = createListeners('document');
+  it('edit value and click outside of the component', async function () {
     const handleChange = jest.fn();
 
-    const wrapper = renderedComponent(handleChange);
+    renderWithTheme(<EditableText value={currentValue} onChange={handleChange} />);
 
-    act(() => {
-      // Click outside of the component
-      fireEvent.mouseDown(document.body);
+    const label = screen.getByTestId('editable-text-label');
+    expect(label).toHaveTextContent(currentValue);
+
+    expect(screen.queryByTestId('editable-text-input')).not.toBeInTheDocument();
+
+    // Use fireEvent.click to avoid createRange issue
+    fireEvent.click(label);
+
+    expect(screen.queryByTestId('editable-text-label')).not.toBeInTheDocument();
+
+    const inputWrapper = screen.getByTestId('editable-text-input');
+    expect(inputWrapper).toBeInTheDocument();
+
+    const input = inputWrapper.querySelector('input') as HTMLInputElement;
+
+    // Use fireEvent to avoid createRange issue
+    fireEvent.change(input, {target: {value: newValue}});
+
+    expect(input).toHaveValue(newValue);
+
+    // Click outside of the component
+    fireEvent.mouseDown(document.body);
+
+    await waitFor(() => {
+      expect(handleChange).toHaveBeenCalledWith(newValue);
     });
 
-    expect(handleChange).toHaveBeenCalled();
-
-    wrapper.update();
-
-    const updatedLabel = wrapper.find('Label');
-    expect(updatedLabel.length).toEqual(1);
-
-    expect(updatedLabel.text()).toEqual(newValue);
+    await waitFor(() => {
+      const updatedLabel = screen.getByTestId('editable-text-label');
+      expect(updatedLabel).toHaveTextContent(newValue);
+    });
   });
 
-  it('edit value and press enter', function () {
-    const fireEvent = createListeners('window');
+  it('edit value and press enter', async function () {
     const handleChange = jest.fn();
 
-    const wrapper = renderedComponent(handleChange);
+    renderWithTheme(<EditableText value={currentValue} onChange={handleChange} />);
 
-    act(() => {
-      // Press enter
-      fireEvent.keyDown('Enter');
+    const label = screen.getByTestId('editable-text-label');
+    expect(label).toHaveTextContent(currentValue);
+
+    expect(screen.queryByTestId('editable-text-input')).not.toBeInTheDocument();
+
+    // Use fireEvent.click to avoid createRange issue
+    fireEvent.click(label);
+
+    expect(screen.queryByTestId('editable-text-label')).not.toBeInTheDocument();
+
+    const inputWrapper = screen.getByTestId('editable-text-input');
+    expect(inputWrapper).toBeInTheDocument();
+
+    const input = inputWrapper.querySelector('input');
+
+    // Use fireEvent to avoid createRange issue
+    fireEvent.change(input, {target: {value: newValue}});
+
+    expect(input).toHaveValue(newValue);
+
+    // Press enter
+    fireEvent.keyDown(input, {key: 'Enter', code: 'Enter'});
+
+    expect(handleChange).toHaveBeenCalledWith(newValue);
+
+    await waitFor(() => {
+      const updatedLabel = screen.getByTestId('editable-text-label');
+      expect(updatedLabel).toHaveTextContent(newValue);
     });
-
-    expect(handleChange).toHaveBeenCalled();
-
-    wrapper.update();
-
-    const updatedLabel = wrapper.find('Label');
-    expect(updatedLabel.length).toEqual(1);
-
-    expect(updatedLabel.text()).toEqual(newValue);
   });
 
-  it('clear value and show error message', function () {
-    const fireEvent = createListeners('window');
+  it('clear value and show error message', async function () {
     const handleChange = jest.fn();
 
-    const wrapper = renderedComponent(handleChange, '');
+    renderWithTheme(<EditableText value={currentValue} onChange={handleChange} />);
 
-    act(() => {
-      // Press enter
-      fireEvent.keyDown('Enter');
-    });
+    const label = screen.getByTestId('editable-text-label');
+    expect(label).toHaveTextContent(currentValue);
+
+    expect(screen.queryByTestId('editable-text-input')).not.toBeInTheDocument();
+
+    // Use fireEvent.click to avoid createRange issue
+    fireEvent.click(label);
+
+    expect(screen.queryByTestId('editable-text-label')).not.toBeInTheDocument();
+
+    const inputWrapper = screen.getByTestId('editable-text-input');
+    expect(inputWrapper).toBeInTheDocument();
+
+    const input = inputWrapper.querySelector('input');
+
+    // Use fireEvent to avoid createRange issue
+    fireEvent.change(input, {target: {value: ''}});
+
+    expect(input).toHaveValue('');
+
+    // Press enter
+    fireEvent.keyDown(input, {key: 'Enter', code: 'Enter'});
 
     expect(handleChange).toHaveBeenCalledTimes(0);
 
-    wrapper.update();
+    // Component should remain in edit mode with empty input
+    expect(screen.getByTestId('editable-text-input')).toBeInTheDocument();
   });
 
-  it('displays a disabled value', function () {
+  it('displays a disabled value', async function () {
     const handleChange = jest.fn();
 
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <EditableText value={currentValue} onChange={handleChange} isDisabled />
     );
 
-    let label = wrapper.find('Label');
-    expect(label.text()).toEqual(currentValue);
+    const label = screen.getByTestId('editable-text-label');
+    expect(label).toHaveTextContent(currentValue);
 
-    label.simulate('click');
+    // Use fireEvent.click to avoid createRange issue
+    fireEvent.click(label);
 
-    const inputWrapper = wrapper.find('InputWrapper');
-    expect(inputWrapper.length).toEqual(0);
+    // Should not enter edit mode
+    expect(screen.queryByTestId('editable-text-input')).not.toBeInTheDocument();
 
-    label = wrapper.find('Label');
-    expect(label.length).toEqual(1);
+    // Label should still be visible
+    expect(screen.getByTestId('editable-text-label')).toBeInTheDocument();
   });
 
   describe('revert value and close editor', function () {
-    it('prop value changes', function () {
+    it('prop value changes', async function () {
       const handleChange = jest.fn();
       const newPropValue = 'new-prop-value';
 
-      const wrapper = renderedComponent(handleChange, '');
+      const {rerender} = renderWithTheme(
+        <EditableText value={currentValue} onChange={handleChange} />
+      );
 
-      wrapper.setProps({value: newPropValue});
-      wrapper.update();
+      const label = screen.getByTestId('editable-text-label');
+      expect(label).toHaveTextContent(currentValue);
 
-      const updatedLabel = wrapper.find('Label');
-      expect(updatedLabel.length).toEqual(1);
+      expect(screen.queryByTestId('editable-text-input')).not.toBeInTheDocument();
 
-      expect(updatedLabel.text()).toEqual(newPropValue);
-    });
+      // Use fireEvent.click to avoid createRange issue
+      fireEvent.click(label);
 
-    it('prop isDisabled changes', function () {
-      const handleChange = jest.fn();
+      expect(screen.queryByTestId('editable-text-label')).not.toBeInTheDocument();
 
-      const wrapper = renderedComponent(handleChange, '');
+      const inputWrapper = screen.getByTestId('editable-text-input');
+      expect(inputWrapper).toBeInTheDocument();
 
-      wrapper.setProps({isDisabled: true});
-      wrapper.update();
+      const input = inputWrapper.querySelector('input') as HTMLInputElement;
 
-      const updatedLabel = wrapper.find('Label');
-      expect(updatedLabel.length).toEqual(1);
+      // Use fireEvent to avoid createRange issue
+      fireEvent.change(input, {target: {value: ''}});
 
-      expect(updatedLabel.text()).toEqual(currentValue);
-    });
+      expect(input).toHaveValue('');
 
-    it('edit value and press escape', function () {
-      const fireEvent = createListeners('window');
-      const handleChange = jest.fn();
+      // Update prop value while editing
+      rerender(<EditableText value={newPropValue} onChange={handleChange} />);
 
-      const wrapper = renderedComponent(handleChange);
-
-      act(() => {
-        // Press escape
-        fireEvent.keyDown('Escape');
+      await waitFor(() => {
+        const updatedLabel = screen.getByTestId('editable-text-label');
+        expect(updatedLabel).toHaveTextContent(newPropValue);
       });
+
+      // Input should be closed
+      expect(screen.queryByTestId('editable-text-input')).not.toBeInTheDocument();
+    });
+
+    it('prop isDisabled changes', async function () {
+      const handleChange = jest.fn();
+
+      const {rerender} = renderWithTheme(
+        <EditableText value={currentValue} onChange={handleChange} />
+      );
+
+      const label = screen.getByTestId('editable-text-label');
+      expect(label).toHaveTextContent(currentValue);
+
+      expect(screen.queryByTestId('editable-text-input')).not.toBeInTheDocument();
+
+      // Use fireEvent.click to avoid createRange issue
+      fireEvent.click(label);
+
+      expect(screen.queryByTestId('editable-text-label')).not.toBeInTheDocument();
+
+      const inputWrapper = screen.getByTestId('editable-text-input');
+      expect(inputWrapper).toBeInTheDocument();
+
+      const input = inputWrapper.querySelector('input') as HTMLInputElement;
+
+      // Use fireEvent to avoid createRange issue
+      fireEvent.change(input, {target: {value: ''}});
+
+      expect(input).toHaveValue('');
+
+      // Update isDisabled prop while editing
+      rerender(<EditableText value={currentValue} onChange={handleChange} isDisabled />);
+
+      await waitFor(() => {
+        const updatedLabel = screen.getByTestId('editable-text-label');
+        expect(updatedLabel).toHaveTextContent(currentValue);
+      });
+
+      // Input should be closed
+      expect(screen.queryByTestId('editable-text-input')).not.toBeInTheDocument();
+    });
+
+    it('edit value and press escape', async function () {
+      const handleChange = jest.fn();
+
+      renderWithTheme(<EditableText value={currentValue} onChange={handleChange} />);
+
+      const label = screen.getByTestId('editable-text-label');
+      expect(label).toHaveTextContent(currentValue);
+
+      expect(screen.queryByTestId('editable-text-input')).not.toBeInTheDocument();
+
+      // Use fireEvent.click to avoid createRange issue
+      fireEvent.click(label);
+
+      expect(screen.queryByTestId('editable-text-label')).not.toBeInTheDocument();
+
+      const inputWrapper = screen.getByTestId('editable-text-input');
+      expect(inputWrapper).toBeInTheDocument();
+
+      const input = inputWrapper.querySelector('input') as HTMLInputElement;
+
+      // Use fireEvent to avoid createRange issue
+      fireEvent.change(input, {target: {value: newValue}});
+
+      expect(input).toHaveValue(newValue);
+
+      // Press escape
+      fireEvent.keyDown(input, {key: 'Escape', code: 'Escape'});
 
       expect(handleChange).toHaveBeenCalledTimes(0);
 
-      wrapper.update();
+      await waitFor(() => {
+        const updatedLabel = screen.getByTestId('editable-text-label');
+        expect(updatedLabel).toHaveTextContent(currentValue);
+      });
 
-      const updatedLabel = wrapper.find('Label');
-      expect(updatedLabel.length).toEqual(1);
-
-      expect(updatedLabel.text()).toEqual(currentValue);
+      // Input should be closed
+      expect(screen.queryByTestId('editable-text-input')).not.toBeInTheDocument();
     });
   });
 });

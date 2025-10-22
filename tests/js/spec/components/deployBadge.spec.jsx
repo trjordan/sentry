@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import DeployBadge from 'app/components/deployBadge';
 
@@ -15,29 +15,38 @@ const deploy = {
 
 describe('DeployBadge', function () {
   it('renders', function () {
-    const wrapper = mountWithTheme(<DeployBadge deploy={deploy} />);
+    const {container} = renderWithTheme(<DeployBadge deploy={deploy} />);
 
-    expect(wrapper.find('Tag').text()).toEqual('production');
-    expect(wrapper.find('IconOpen').length).toEqual(0);
+    expect(screen.getByText('production')).toBeInTheDocument();
+    expect(
+      container.querySelector('svg[data-test-id="icon-open"]')
+    ).not.toBeInTheDocument();
   });
 
   it('renders with icon and link', function () {
     const projectId = 1;
 
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <DeployBadge
         deploy={deploy}
         orgSlug="sentry"
         version="1.2.3"
         projectId={projectId}
-      />
+      />,
+      {
+        context: {
+          router: TestStubs.router(),
+        },
+      }
     );
 
-    expect(wrapper.find('Link').props('to').to).toEqual({
-      pathname: '/organizations/sentry/issues/',
-      query: {project: projectId, environment: 'production', query: 'release:1.2.3'},
-    });
-    expect(wrapper.find('Tag').text()).toEqual('production');
-    expect(wrapper.find('IconOpen').length).toEqual(1);
+    const link = container.querySelector('a');
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute(
+      'href',
+      '/organizations/sentry/issues/?project=1&environment=production&query=release%3A1.2.3'
+    );
+    expect(screen.getByText('production')).toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeInTheDocument();
   });
 });

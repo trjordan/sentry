@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import {RedirectToProjectModal} from 'app/components/modals/redirectToProject';
 
@@ -22,7 +22,8 @@ describe('RedirectToProjectModal', function () {
   });
 
   it('has timer to redirect to new slug after mounting', function () {
-    mountWithTheme(
+    const routerContext = TestStubs.routerContext();
+    renderWithTheme(
       <RedirectToProjectModal
         routes={routes}
         params={{orgId: 'org-slug', projectId: 'project-slug'}}
@@ -30,7 +31,7 @@ describe('RedirectToProjectModal', function () {
         Header={p => p.children}
         Body={p => p.children}
       />,
-      TestStubs.routerContext()
+      routerContext
     );
 
     jest.advanceTimersByTime(4900);

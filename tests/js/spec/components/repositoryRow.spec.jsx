@@ -1,7 +1,13 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {mountGlobalModal} from 'sentry-test/modal';
+import {
+  renderGlobalModal,
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'app/api';
 import RepositoryRow from 'app/components/repositoryRow';
@@ -21,37 +27,42 @@ describe('RepositoryRow', function () {
     const organization = TestStubs.Organization({
       access: ['org:integrations'],
     });
-    const routerContext = TestStubs.routerContext([{organization}]);
 
     it('displays provider information', function () {
-      const wrapper = mountWithTheme(
+      renderWithTheme(
         <RepositoryRow repository={repository} api={api} orgId={organization.slug} />,
-        routerContext
+        {
+          context: {organization},
+        }
       );
-      expect(wrapper.find('strong').text()).toEqual(repository.name);
-      expect(wrapper.find('small a').text()).toEqual('github.com/example/repo-name');
+
+      expect(screen.getByText(repository.name)).toBeInTheDocument();
+      expect(screen.getByText('github.com/example/repo-name')).toBeInTheDocument();
 
       // Trash button should display enabled
-      expect(wrapper.find('Confirm').props().disabled).toEqual(false);
+      const deleteButton = screen.getByRole('button', {name: /delete/i});
+      expect(deleteButton).toBeEnabled();
 
       // No cancel button
-      expect(wrapper.find('Button[data-test-id="repo-cancel"]')).toHaveLength(0);
+      expect(screen.queryByTestId('repo-cancel')).not.toBeInTheDocument();
     });
 
     it('displays cancel pending button', function () {
-      const wrapper = mountWithTheme(
+      renderWithTheme(
         <RepositoryRow repository={pendingRepo} api={api} orgId={organization.slug} />,
-        routerContext
+        {
+          context: {organization},
+        }
       );
 
       // Trash button should be disabled
-      expect(wrapper.find('Confirm').props().disabled).toEqual(true);
-      expect(wrapper.find('Button[label="delete"]').props().disabled).toEqual(true);
+      const deleteButton = screen.getByRole('button', {name: /delete/i});
+      expect(deleteButton).toHaveAttribute('aria-disabled', 'true');
 
       // Cancel button active
-      const cancel = wrapper.find('Button[data-test-id="repo-cancel"]');
-      expect(cancel).toHaveLength(1);
-      expect(cancel.props().disabled).toEqual(false);
+      const cancelButton = screen.getByTestId('repo-cancel');
+      expect(cancelButton).toBeInTheDocument();
+      expect(cancelButton).toBeEnabled();
     });
   });
 
@@ -59,29 +70,31 @@ describe('RepositoryRow', function () {
     const organization = TestStubs.Organization({
       access: ['org:write'],
     });
-    const routerContext = TestStubs.routerContext([{organization}]);
 
     it('displays disabled trash', function () {
-      const wrapper = mountWithTheme(
+      renderWithTheme(
         <RepositoryRow repository={repository} api={api} orgId={organization.slug} />,
-        routerContext
+        {
+          context: {organization},
+        }
       );
 
       // Trash button should be disabled
-      expect(wrapper.find('Confirm').props().disabled).toEqual(true);
-      expect(wrapper.find('Button[label="delete"]').props().disabled).toEqual(true);
+      const deleteButton = screen.getByRole('button', {name: /delete/i});
+      expect(deleteButton).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('displays disabled cancel', function () {
-      const wrapper = mountWithTheme(
+      renderWithTheme(
         <RepositoryRow repository={pendingRepo} api={api} orgId={organization.slug} />,
-        routerContext
+        {
+          context: {organization},
+        }
       );
 
       // Cancel should be disabled
-      expect(wrapper.find('Button[data-test-id="repo-cancel"]').props().disabled).toEqual(
-        true
-      );
+      const cancelButton = screen.getByTestId('repo-cancel');
+      expect(cancelButton).toHaveAttribute('aria-disabled', 'true');
     });
   });
 
@@ -89,7 +102,6 @@ describe('RepositoryRow', function () {
     const organization = TestStubs.Organization({
       access: ['org:integrations'],
     });
-    const routerContext = TestStubs.routerContext([{organization}]);
 
     it('sends api request on delete', async function () {
       const deleteRepo = Client.addMockResponse({
@@ -99,18 +111,27 @@ describe('RepositoryRow', function () {
         body: {},
       });
 
-      const wrapper = mountWithTheme(
+      renderWithTheme(
         <RepositoryRow repository={repository} api={api} orgId={organization.slug} />,
-        routerContext
+        {
+          context: {organization},
+        }
       );
-      wrapper.find('Button[label="delete"]').simulate('click');
+
+      const deleteButton = screen.getByRole('button', {name: /delete/i});
+      await userEvent.click(deleteButton);
+
+      await renderGlobalModal();
 
       // Confirm modal
-      const modal = await mountGlobalModal();
-      modal.find('Button[priority="primary"]').simulate('click');
-      await wrapper.update();
+      const dialogs = screen.getAllByRole('dialog');
+      const modal = dialogs.find(d => d.classList.contains('modal'));
+      const confirmButton = within(modal).getByRole('button', {name: /confirm/i});
+      await userEvent.click(confirmButton);
 
-      expect(deleteRepo).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(deleteRepo).toHaveBeenCalled();
+      });
     });
   });
 
@@ -118,7 +139,6 @@ describe('RepositoryRow', function () {
     const organization = TestStubs.Organization({
       access: ['org:integrations'],
     });
-    const routerContext = TestStubs.routerContext([{organization}]);
 
     it('sends api request to cancel', async function () {
       const cancel = Client.addMockResponse({
@@ -128,14 +148,19 @@ describe('RepositoryRow', function () {
         body: {},
       });
 
-      const wrapper = mountWithTheme(
+      renderWithTheme(
         <RepositoryRow repository={pendingRepo} api={api} orgId={organization.slug} />,
-        routerContext
+        {
+          context: {organization},
+        }
       );
-      wrapper.find('Button[data-test-id="repo-cancel"]').simulate('click');
-      await wrapper.update();
 
-      expect(cancel).toHaveBeenCalled();
+      const cancelButton = screen.getByTestId('repo-cancel');
+      await userEvent.click(cancelButton);
+
+      await waitFor(() => {
+        expect(cancel).toHaveBeenCalled();
+      });
     });
   });
 });

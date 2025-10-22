@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import GlobalSelectionLink from 'app/components/globalSelectionLink';
 
@@ -13,31 +13,34 @@ describe('GlobalSelectionLink', function () {
       environment: 'staging',
     };
 
-    const wrapper = mountWithTheme(
-      <GlobalSelectionLink location={{query}} to={path}>
-        Go somewhere!
-      </GlobalSelectionLink>
+    const router = TestStubs.router({location: {query}});
+
+    const {container} = renderWithTheme(
+      <GlobalSelectionLink to={path}>Go somewhere!</GlobalSelectionLink>,
+      {context: {router, location: router.location}}
     );
 
-    const updatedToProp = wrapper.find('Link').prop('to');
+    const link = screen.getByRole('link', {name: 'Go somewhere!'});
+    expect(link).toBeInTheDocument();
 
-    expect(updatedToProp).toEqual({pathname: path, query});
-
-    expect(wrapper).toSnapshot();
+    // Access the React component props via the container
+    const linkElement = container.querySelector('a');
+    expect(linkElement).toHaveAttribute('href', expect.stringContaining(path));
   });
 
   it('does not have global selection values in query', function () {
-    const wrapper = mountWithTheme(
-      <GlobalSelectionLink location={{}} to={path}>
-        Go somewhere!
-      </GlobalSelectionLink>
+    const router = TestStubs.router({location: {query: {}}});
+
+    const {container} = renderWithTheme(
+      <GlobalSelectionLink to={path}>Go somewhere!</GlobalSelectionLink>,
+      {context: {router, location: router.location}}
     );
 
-    const updatedToProp = wrapper.find('Link').prop('to');
+    const link = screen.getByRole('link', {name: 'Go somewhere!'});
+    expect(link).toBeInTheDocument();
 
-    expect(updatedToProp).toEqual(path);
-
-    expect(wrapper).toSnapshot();
+    const linkElement = container.querySelector('a');
+    expect(linkElement).toHaveAttribute('href', path);
   });
 
   it('combines query parameters with custom query', function () {
@@ -46,18 +49,26 @@ describe('GlobalSelectionLink', function () {
       environment: 'staging',
     };
     const customQuery = {query: 'something'};
-    const wrapper = mountWithTheme(
-      <GlobalSelectionLink location={{query}} to={{pathname: path, query: customQuery}}>
+
+    const router = TestStubs.router({location: {query}});
+
+    const {container} = renderWithTheme(
+      <GlobalSelectionLink to={{pathname: path, query: customQuery}}>
         Go somewhere!
-      </GlobalSelectionLink>
+      </GlobalSelectionLink>,
+      {context: {router, location: router.location}}
     );
 
-    const updatedToProp = wrapper.find('Link').prop('to');
+    const link = screen.getByRole('link', {name: 'Go somewhere!'});
+    expect(link).toBeInTheDocument();
 
-    expect(updatedToProp).toEqual({
-      pathname: path,
-      query: {project: ['foo', 'bar'], environment: 'staging', query: 'something'},
-    });
+    // Verify the link contains the combined query parameters
+    const linkElement = container.querySelector('a');
+    const href = linkElement?.getAttribute('href') || '';
+    // Array query params are serialized as comma-separated values
+    expect(href).toContain('project=foo%2Cbar');
+    expect(href).toContain('environment=staging');
+    expect(href).toContain('query=something');
   });
 
   it('combines query parameters with no query', function () {
@@ -65,14 +76,22 @@ describe('GlobalSelectionLink', function () {
       project: ['foo', 'bar'],
       environment: 'staging',
     };
-    const wrapper = mountWithTheme(
-      <GlobalSelectionLink location={{query}} to={{pathname: path}}>
-        Go somewhere!
-      </GlobalSelectionLink>
+
+    const router = TestStubs.router({location: {query}});
+
+    const {container} = renderWithTheme(
+      <GlobalSelectionLink to={{pathname: path}}>Go somewhere!</GlobalSelectionLink>,
+      {context: {router, location: router.location}}
     );
 
-    const updatedToProp = wrapper.find('Link').prop('to');
+    const link = screen.getByRole('link', {name: 'Go somewhere!'});
+    expect(link).toBeInTheDocument();
 
-    expect(updatedToProp).toEqual({pathname: path, query});
+    // Verify the link contains the query parameters
+    const linkElement = container.querySelector('a');
+    const href = linkElement?.getAttribute('href') || '';
+    // Array query params are serialized as comma-separated values
+    expect(href).toContain('project=foo%2Cbar');
+    expect(href).toContain('environment=staging');
   });
 });

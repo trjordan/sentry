@@ -1,28 +1,23 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
-import {TextField} from 'app/components/forms';
+import {Form, TextField} from 'app/components/forms';
 
 describe('TextField', function () {
   describe('render()', function () {
     it('renders without form context', function () {
-      const wrapper = mountWithTheme(<TextField name="fieldName" />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<TextField name="fieldName" />);
+      expect(container).toSnapshot();
     });
 
     it('renders with form context', function () {
-      const wrapper = mountWithTheme(<TextField name="fieldName" />, {
-        context: {
-          form: {
-            data: {
-              fieldName: 'fieldValue',
-            },
-            errors: {},
-          },
-        },
-      });
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(
+        <Form initialData={{fieldName: 'fieldValue'}}>
+          <TextField name="fieldName" />
+        </Form>
+      );
+      expect(container).toSnapshot();
     });
   });
 });

@@ -1,12 +1,12 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import PanelTable from 'app/components/panels/panelTable';
 
 describe('PanelTable', function () {
   const createWrapper = (props = {}) =>
-    mountWithTheme(
+    renderWithTheme(
       <PanelTable
         headers={[<div key="1">1</div>, <div key="2">2</div>, <div key="3">3</div>]}
         {...props}
@@ -18,62 +18,68 @@ describe('PanelTable', function () {
     );
 
   it('renders headers', function () {
-    const wrapper = createWrapper();
+    const {container} = createWrapper();
 
-    expect(wrapper.find('PanelTableHeader')).toHaveLength(3);
+    expect(container.querySelectorAll('[role="columnheader"]')).toHaveLength(3);
 
     // 3 divs from headers, 3 from "body"
-    expect(wrapper.find('[data-test-id="cell"]')).toHaveLength(3);
+    expect(screen.getAllByTestId('cell')).toHaveLength(3);
 
-    expect(wrapper.find('PanelTableHeader').at(0).text()).toBe('1');
+    expect(container.querySelector('[role="columnheader"]')).toHaveTextContent('1');
   });
 
   it('renders loading', function () {
-    const wrapper = createWrapper({isLoading: true});
+    const {container} = createWrapper({isLoading: true});
 
     // Does not render content
-    expect(wrapper.find('[data-test-id="cell"]')).toHaveLength(0);
+    expect(screen.queryAllByTestId('cell')).toHaveLength(0);
 
-    // renders loading
-    expect(wrapper.find('LoadingIndicator')).toBeDefined();
+    // renders loading - LoadingIndicator uses data-testid not data-test-id
+    expect(
+      container.querySelector('[data-testid="loading-indicator"]')
+    ).toBeInTheDocument();
   });
 
   it('renders custom loader', function () {
-    const wrapper = createWrapper({
+    const {container} = createWrapper({
       isLoading: true,
       loader: <span data-test-id="custom-loader">loading</span>,
     });
 
     // Does not render content
-    expect(wrapper.find('[data-test-id="cell"]')).toHaveLength(0);
+    expect(screen.queryAllByTestId('cell')).toHaveLength(0);
 
-    // no default loader
-    expect(wrapper.find('LoadingIndicator')).toHaveLength(0);
+    // no default loader - LoadingIndicator uses data-testid not data-test-id
+    expect(
+      container.querySelector('[data-testid="loading-indicator"]')
+    ).not.toBeInTheDocument();
 
     // has custom loader
-    expect(wrapper.find('[data-test-id="custom-loader"]')).toHaveLength(1);
+    expect(screen.getByTestId('custom-loader')).toBeInTheDocument();
   });
 
   it('ignores empty state when loading', function () {
-    const wrapper = createWrapper({isLoading: true, isEmpty: true});
+    const {container} = createWrapper({isLoading: true, isEmpty: true});
 
-    // renders loading
-    expect(wrapper.find('LoadingIndicator')).toBeDefined();
-    expect(wrapper.find('EmptyStateWarning')).toHaveLength(0);
+    // renders loading - LoadingIndicator uses data-testid not data-test-id
+    expect(
+      container.querySelector('[data-testid="loading-indicator"]')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('I am empty inside')).not.toBeInTheDocument();
   });
 
   it('renders empty state with custom message', function () {
-    const wrapper = createWrapper({isEmpty: true, emptyMessage: 'I am empty inside'});
+    createWrapper({isEmpty: true, emptyMessage: 'I am empty inside'});
 
     // Does not render content
-    expect(wrapper.find('[data-test-id="cell"]')).toHaveLength(0);
+    expect(screen.queryAllByTestId('cell')).toHaveLength(0);
 
     // renders empty state
-    expect(wrapper.find('EmptyStateWarning').text()).toBe('I am empty inside');
+    expect(screen.getByText('I am empty inside')).toBeInTheDocument();
   });
 
   it('children can be a render function', function () {
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <PanelTable
         headers={[<div key="1">1</div>, <div key="2">2</div>, <div key="3">3</div>]}
       >
@@ -81,6 +87,6 @@ describe('PanelTable', function () {
       </PanelTable>
     );
 
-    expect(wrapper.find('p').text()).toBe('I am child');
+    expect(screen.getByText('I am child')).toBeInTheDocument();
   });
 });

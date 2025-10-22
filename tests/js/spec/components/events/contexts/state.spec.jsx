@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import StateContextType from 'app/components/events/contexts/state';
 
@@ -21,17 +21,17 @@ const STATE_CONTEXT = {
 
 describe('StateContext', function () {
   it('renders', () => {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <StateContextType alias="state" data={STATE_CONTEXT} />
     );
 
-    const keys = wrapper.find('TableSubject.key');
-    const values = wrapper.find('.val');
+    const keys = container.querySelectorAll('.key');
+    const values = container.querySelectorAll('.val');
 
-    expect(keys.at(0).text()).toEqual('State (Redux)');
-    expect(keys.at(1).text()).toEqual('otherState');
+    expect(keys[0].textContent).toEqual('State (Redux)');
+    expect(keys[1].textContent).toEqual('otherState');
 
-    expect(values.at(0).text()).toEqual('{a: abc}');
-    expect(values.at(1).text()).toEqual('{b: bcd}');
+    expect(values[0].textContent).toEqual('{a: abc}');
+    expect(values[1].textContent).toEqual('{b: bcd}');
   });
 });

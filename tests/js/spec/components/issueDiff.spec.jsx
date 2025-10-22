@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import {IssueDiff} from 'app/components/issueDiff';
 
@@ -8,7 +8,6 @@ jest.mock('app/api');
 
 describe('IssueDiff', function () {
   const entries = TestStubs.Entries();
-  const routerContext = TestStubs.routerContext();
   const api = new MockApiClient();
   const project = TestStubs.ProjectDetails();
 
@@ -46,7 +45,7 @@ describe('IssueDiff', function () {
   });
 
   it('is loading when initially rendering', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <IssueDiff
         api={api}
         baseIssueId="base"
@@ -55,28 +54,26 @@ describe('IssueDiff', function () {
         project={project}
       />
     );
-    expect(wrapper.find('SplitDiff')).toHaveLength(0);
-    expect(wrapper).toSnapshot();
+    expect(container.querySelector('.loading-indicator')).toBeInTheDocument();
   });
 
   it('can dynamically import SplitDiff', async function () {
-    // Need `mount` because of componentDidMount in <IssueDiff>
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <IssueDiff
         api={api}
         baseIssueId="base"
         targetIssueId="target"
         orgId="org-slug"
         project={project}
-      />,
-      routerContext
+      />
     );
 
-    await tick();
-    wrapper.update();
+    await waitFor(() => {
+      expect(container.querySelector('.loading-indicator')).not.toBeInTheDocument();
+    });
 
-    expect(wrapper.find('SplitDiff')).toHaveLength(1);
-    expect(wrapper).toSnapshot();
+    // SplitDiff is rendered as a table
+    expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
   it('can diff message', async function () {
@@ -94,22 +91,21 @@ describe('IssueDiff', function () {
       },
     });
 
-    // Need `mount` because of componentDidMount in <IssueDiff>
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <IssueDiff
         api={api}
         baseIssueId="base"
         targetIssueId="target"
         orgId="org-slug"
         project={project}
-      />,
-      routerContext
+      />
     );
 
-    await tick();
-    wrapper.update();
+    await waitFor(() => {
+      expect(container.querySelector('.loading-indicator')).not.toBeInTheDocument();
+    });
 
-    expect(wrapper.find('SplitDiff')).toHaveLength(1);
-    expect(wrapper).toSnapshot();
+    // SplitDiff is rendered as a table
+    expect(screen.getByRole('table')).toBeInTheDocument();
   });
 });

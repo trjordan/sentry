@@ -1,33 +1,30 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
-import {PasswordField} from 'app/components/forms';
+import {Form, PasswordField} from 'app/components/forms';
 
 describe('PasswordField', function () {
   describe('render()', function () {
     it('renders', function () {
-      const wrapper = mountWithTheme(<PasswordField name="fieldName" />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<PasswordField name="fieldName" />);
+      expect(container).toSnapshot();
     });
 
     it('renders with value', function () {
-      const wrapper = mountWithTheme(<PasswordField name="fieldName" value="foobar" />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(
+        <PasswordField name="fieldName" value="foobar" />
+      );
+      expect(container).toSnapshot();
     });
 
     it('renders with form context', function () {
-      const wrapper = mountWithTheme(<PasswordField name="fieldName" />, {
-        context: {
-          form: {
-            data: {
-              fieldName: 'foobar',
-            },
-            errors: {},
-          },
-        },
-      });
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(
+        <Form initialData={{fieldName: 'foobar'}}>
+          <PasswordField name="fieldName" />
+        </Form>
+      );
+      expect(container).toSnapshot();
     });
   });
 });

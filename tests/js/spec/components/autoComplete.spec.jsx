@@ -18,7 +18,7 @@ const items = [
 
 /**
  * For every render, we push all injected params into `autoCompleteState`, we probably want to
- * assert against those instead of the wrapper's state since component state will be different if we have
+ * assert against those instead of the component's internal state since component state will be different if we have
  * "controlled" props where <AutoComplete> does not handle state
  */
 describe('AutoComplete', function () {
@@ -35,7 +35,7 @@ describe('AutoComplete', function () {
     autoCompleteState = [];
     Object.keys(mocks).forEach(key => mocks[key].mockReset());
 
-    wrapper = mountWithTheme(
+    return mountWithTheme(
       <AutoComplete {...mocks} itemToString={item => item.name} {...props}>
         {injectedProps => {
           const {
@@ -100,14 +100,12 @@ describe('AutoComplete', function () {
         }}
       </AutoComplete>
     );
-
-    input = wrapper.find('input');
-    return wrapper;
   };
 
   describe('Uncontrolled', function () {
     beforeEach(() => {
       wrapper = createWrapper();
+      input = wrapper.find('input');
     });
 
     it('shows dropdown menu when input has focus', function () {
@@ -313,6 +311,7 @@ describe('AutoComplete', function () {
   describe('Controlled', function () {
     beforeEach(function () {
       wrapper = createWrapper({isOpen: true});
+      input = wrapper.find('input');
     });
 
     it('has dropdown menu initially open', function () {
@@ -332,6 +331,7 @@ describe('AutoComplete', function () {
 
     it('remains closed when input is focused, but calls `onOpen`', function () {
       wrapper = createWrapper({isOpen: false});
+      input = wrapper.find('input');
       jest.useFakeTimers();
 
       expect(wrapper.state('isOpen')).toBe(false);
@@ -490,11 +490,13 @@ describe('AutoComplete', function () {
 
   it('selects using enter key', function () {
     wrapper = createWrapper({isOpen: true, shouldSelectWithEnter: false});
+    input = wrapper.find('input');
     input.simulate('change', {target: {value: 'pine'}});
     input.simulate('keyDown', {key: 'Enter'});
     expect(mocks.onSelect).not.toHaveBeenCalled();
 
     wrapper = createWrapper({isOpen: true, shouldSelectWithEnter: true});
+    input = wrapper.find('input');
     input.simulate('change', {target: {value: 'pine'}});
     input.simulate('keyDown', {key: 'Enter'});
     expect(mocks.onSelect).toHaveBeenCalledWith(
@@ -508,11 +510,13 @@ describe('AutoComplete', function () {
 
   it('selects using tab key', function () {
     wrapper = createWrapper({isOpen: true, shouldSelectWithTab: false});
+    input = wrapper.find('input');
     input.simulate('change', {target: {value: 'pine'}});
     input.simulate('keyDown', {key: 'Tab'});
     expect(mocks.onSelect).not.toHaveBeenCalled();
 
     wrapper = createWrapper({isOpen: true, shouldSelectWithTab: true});
+    input = wrapper.find('input');
     input.simulate('change', {target: {value: 'pine'}});
     input.simulate('keyDown', {key: 'Tab'});
     expect(mocks.onSelect).toHaveBeenCalledWith(
@@ -526,6 +530,7 @@ describe('AutoComplete', function () {
 
   it('does not reset highlight state if `closeOnSelect` is false and we select a new item', function () {
     wrapper = createWrapper({closeOnSelect: false});
+    input = wrapper.find('input');
     jest.useFakeTimers();
     input.simulate('focus');
     expect(wrapper.state('isOpen')).toBe(true);

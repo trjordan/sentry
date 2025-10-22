@@ -1,11 +1,10 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import TeamAccessRequestModal from 'app/components/modals/teamAccessRequestModal';
 
 describe('TeamAccessRequestModal', function () {
-  let wrapper;
   let createMock;
 
   const closeModal = jest.fn();
@@ -24,14 +23,13 @@ describe('TeamAccessRequestModal', function () {
 
   beforeEach(function () {
     MockApiClient.clearMockResponses();
-    wrapper = mountWithTheme(
+    renderWithTheme(
       <TeamAccessRequestModal
         orgId={orgId}
         teamId={teamId}
         memberId={memberId}
         {...modalRenderProps}
-      />,
-      TestStubs.routerContext()
+      />
     );
 
     createMock = MockApiClient.addMockResponse({
@@ -41,18 +39,22 @@ describe('TeamAccessRequestModal', function () {
   });
 
   it('renders', function () {
-    expect(wrapper.find('Body').text()).toBe(
-      `You do not have permission to add members to the #${teamId} team, but we will send a request to your organization admins for approval.`
-    );
+    expect(
+      screen.getByText(
+        (_content, element) =>
+          element?.textContent ===
+          `You do not have permission to add members to the #${teamId} team, but we will send a request to your organization admins for approval.`
+      )
+    ).toBeInTheDocument();
   });
 
-  it('creates access request on continue', function () {
-    wrapper.find('button[aria-label="Continue"]').simulate('click');
+  it('creates access request on continue', async function () {
+    await userEvent.click(screen.getByRole('button', {name: 'Continue'}));
     expect(createMock).toHaveBeenCalled();
   });
 
-  it('closes modal on cancel', function () {
-    wrapper.find('button[aria-label="Cancel"]').simulate('click');
+  it('closes modal on cancel', async function () {
+    await userEvent.click(screen.getByRole('button', {name: 'Cancel'}));
     expect(createMock).not.toHaveBeenCalled();
     expect(closeModal).toHaveBeenCalled();
   });

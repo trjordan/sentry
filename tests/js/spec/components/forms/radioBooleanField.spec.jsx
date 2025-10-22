@@ -1,46 +1,42 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import {RadioBooleanField} from 'app/components/forms';
+import Form from 'app/components/forms/form';
 import NewRadioBooleanField from 'app/views/settings/components/forms/radioBooleanField';
 
 describe('RadioBooleanField', function () {
   describe('render()', function () {
     it('renders without form context', function () {
-      const wrapper = mountWithTheme(
+      const {container} = renderWithTheme(
         <RadioBooleanField name="fieldName" yesLabel="Yes" noLabel="No" />
       );
-      expect(wrapper).toSnapshot();
+      expect(container.querySelector('input[value="true"]')).toBeInTheDocument();
+      expect(container.querySelector('input[value="false"]')).toBeInTheDocument();
     });
 
     it('renders with form context', function () {
-      const wrapper = mountWithTheme(
-        <RadioBooleanField name="fieldName" yesLabel="Yes" noLabel="No" />,
-        {
-          context: {
-            form: {
-              data: {
-                fieldName: true,
-              },
-              errors: {},
-            },
-          },
-        }
+      const {container} = renderWithTheme(
+        <Form initialData={{fieldName: true}}>
+          <RadioBooleanField name="fieldName" yesLabel="Yes" noLabel="No" />
+        </Form>
       );
-      expect(wrapper).toSnapshot();
+      const trueInput = container.querySelector('input[value="true"]');
+      expect(trueInput).toBeChecked();
     });
 
     it('renders new field without form context', function () {
-      const wrapper = mountWithTheme(
+      const {container} = renderWithTheme(
         <NewRadioBooleanField name="fieldName" yesLabel="Yes" noLabel="No" />
       );
-      expect(wrapper).toSnapshot();
+      expect(container.querySelector('input[value="true"]')).toBeInTheDocument();
+      expect(container.querySelector('input[value="false"]')).toBeInTheDocument();
     });
 
     it('can change values', function () {
       const mock = jest.fn();
-      const wrapper = mountWithTheme(
+      const {container} = renderWithTheme(
         <NewRadioBooleanField
           onChange={mock}
           name="fieldName"
@@ -49,10 +45,13 @@ describe('RadioBooleanField', function () {
         />
       );
 
-      wrapper.find('input[value="true"]').simulate('change');
+      const trueInput = container.querySelector('input[value="true"]');
+      const falseInput = container.querySelector('input[value="false"]');
+
+      trueInput?.click();
       expect(mock).toHaveBeenCalledWith(true, expect.anything());
 
-      wrapper.find('input[value="false"]').simulate('change');
+      falseInput?.click();
       expect(mock).toHaveBeenCalledWith(false, expect.anything());
     });
   });

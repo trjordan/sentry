@@ -1,16 +1,21 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {initializeOrg} from 'sentry-test/initializeOrg';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import GroupSidebar from 'app/components/group/sidebar';
 
 describe('GroupSidebar', function () {
   let group = TestStubs.Group({tags: TestStubs.Tags()});
-  const {organization, project, routerContext} = initializeOrg();
+  const organization = TestStubs.Organization();
+  const project = TestStubs.Project();
   const environment = {name: 'production', displayName: 'Production', id: '1'};
-  let wrapper;
   let tagsMock;
+
+  const routerContext = TestStubs.routerContext([
+    {
+      organization,
+    },
+  ]);
 
   beforeEach(function () {
     MockApiClient.addMockResponse({
@@ -55,17 +60,6 @@ describe('GroupSidebar', function () {
       url: '/issues/1/tags/',
       body: TestStubs.Tags(),
     });
-
-    wrapper = mountWithTheme(
-      <GroupSidebar
-        group={group}
-        project={project}
-        organization={organization}
-        event={TestStubs.Event()}
-        environments={[environment]}
-      />,
-      routerContext
-    );
   });
 
   afterEach(function () {
@@ -74,23 +68,45 @@ describe('GroupSidebar', function () {
 
   describe('sidebar', function () {
     it('should make a request to the /tags/ endpoint to get top values', function () {
+      renderWithTheme(
+        <GroupSidebar
+          group={group}
+          project={project}
+          organization={organization}
+          event={TestStubs.Event()}
+          environments={[environment]}
+        />,
+        {context: routerContext[0]}
+      );
       expect(tagsMock).toHaveBeenCalled();
     });
   });
 
   describe('renders with tags', function () {
     it('renders', async function () {
-      expect(wrapper.find('SuggestedOwners')).toHaveLength(1);
-      expect(wrapper.find('Memo(GroupReleaseStats)')).toHaveLength(1);
-      expect(wrapper.find('ExternalIssueList')).toHaveLength(1);
-      await tick();
-      wrapper.update();
-      expect(wrapper.find('GroupTagDistributionMeter')).toHaveLength(5);
+      const {container} = renderWithTheme(
+        <GroupSidebar
+          group={group}
+          project={project}
+          organization={organization}
+          event={TestStubs.Event()}
+          environments={[environment]}
+        />,
+        {context: routerContext[0]}
+      );
+
+      // Wait for async data to load - wait for a consistent element to appear
+      await screen.findByText('Production');
+
+      // Check for tag distribution meters
+      expect(
+        container.querySelectorAll('[data-test-id="group-tag-distribution-meter"]')
+      ).toHaveLength(5);
     });
   });
 
   describe('renders without tags', function () {
-    beforeEach(async function () {
+    beforeEach(function () {
       group = TestStubs.Group();
 
       MockApiClient.addMockResponse({
@@ -101,38 +117,74 @@ describe('GroupSidebar', function () {
         url: '/issues/1/tags/',
         body: [],
       });
+    });
 
-      wrapper = mountWithTheme(
+    it('renders no tags', async function () {
+      const {container} = renderWithTheme(
         <GroupSidebar
-          api={new MockApiClient()}
           group={group}
           organization={organization}
           project={project}
           event={TestStubs.Event()}
           environments={[environment]}
         />,
-        routerContext
+        {context: routerContext[0]}
       );
-      await tick();
-      wrapper.update();
+
+      // Wait for component to load - use text instead of testid
+      await screen.findByText('No tags found in the selected environments');
+
+      expect(
+        container.querySelectorAll('[data-test-id="group-tag-distribution-meter"]')
+      ).toHaveLength(0);
     });
 
-    it('renders no tags', function () {
-      expect(wrapper.find('GroupTagDistributionMeter')).toHaveLength(0);
-    });
+    it('renders empty text', async function () {
+      renderWithTheme(
+        <GroupSidebar
+          group={group}
+          organization={organization}
+          project={project}
+          event={TestStubs.Event()}
+          environments={[environment]}
+        />,
+        {context: routerContext[0]}
+      );
 
-    it('renders empty text', function () {
-      expect(wrapper.find('[data-test-id="no-tags"]').text()).toBe(
+      const noTagsElement = await screen.findByText(
         'No tags found in the selected environments'
       );
+      expect(noTagsElement).toBeInTheDocument();
     });
   });
 
   describe('environment toggle', function () {
-    it('re-requests tags with correct environment', function () {
+    it('re-requests tags with correct environment', async function () {
       const stagingEnv = {name: 'staging', displayName: 'Staging', id: '2'};
+
+      const {rerender} = renderWithTheme(
+        <GroupSidebar
+          group={group}
+          project={project}
+          organization={organization}
+          event={TestStubs.Event()}
+          environments={[environment]}
+        />,
+        {context: routerContext[0]}
+      );
+
       expect(tagsMock).toHaveBeenCalledTimes(1);
-      wrapper.setProps({environments: [stagingEnv]});
+
+      rerender(
+        <GroupSidebar
+          group={group}
+          project={project}
+          organization={organization}
+          event={TestStubs.Event()}
+          environments={[stagingEnv]}
+        />
+      );
+
       expect(tagsMock).toHaveBeenCalledTimes(2);
       expect(tagsMock).toHaveBeenCalledWith(
         '/issues/1/tags/',

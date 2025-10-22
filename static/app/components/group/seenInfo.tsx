@@ -54,7 +54,7 @@ class SeenInfo extends React.Component<Props> {
     } = this.props;
 
     return (
-      <HovercardWrapper>
+      <HovercardWrapper data-test-id="seen-info">
         <StyledHovercard
           header={
             <div>

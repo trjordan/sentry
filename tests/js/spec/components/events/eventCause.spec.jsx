@@ -1,8 +1,7 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
-import {Client} from 'app/api';
 import EventCause from 'app/components/events/eventCause';
 import CommitterStore from 'app/stores/committerStore';
 
@@ -11,20 +10,15 @@ describe('EventCause', function () {
   const project = TestStubs.Project();
   const event = TestStubs.Event();
   const group = TestStubs.Group({firstRelease: {}});
-
-  const context = {
-    organization,
-    project,
-    group: TestStubs.Group(),
-  };
+  const api = new MockApiClient();
 
   afterEach(function () {
-    Client.clearMockResponses();
+    MockApiClient.clearMockResponses();
     CommitterStore.reset();
   });
 
   beforeEach(function () {
-    Client.addMockResponse({
+    MockApiClient.addMockResponse({
       method: 'GET',
       url: `/projects/${organization.slug}/${project.slug}/events/${event.id}/committers/`,
       body: {
@@ -68,54 +62,66 @@ describe('EventCause', function () {
   });
 
   it('renders', async function () {
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <EventCause
+        api={api}
         organization={organization}
         project={project}
         event={event}
         group={group}
-      />,
-      {context}
+      />
     );
 
-    await tick();
-    await tick(); // Run Store.load and fire Action.loadSuccess
-    await tick(); // Run Store.loadSuccess
-    wrapper.update();
+    // Wait for author name to appear
+    expect(await screen.findByText('Max Bittker')).toBeInTheDocument();
 
-    expect(wrapper.find('CommitRow')).toHaveLength(1);
-    expect(wrapper.find('EmailWarningIcon').exists()).toBe(false);
-    expect(wrapper.find('Hovercard').exists()).toBe(false);
+    // Should show "Suspect Commits (2)" header - 2 unique commits
+    expect(screen.getByText('Suspect Commits (2)')).toBeInTheDocument();
+
+    // Should only show 1 commit row initially (first commit)
+    // Query by text content in commits
+    expect(screen.getByText(/feat: Enhance suggested commits/i)).toBeInTheDocument();
+    expect(screen.queryByText(/fix: Make things less broken/i)).not.toBeInTheDocument();
   });
 
   it('expands', async function () {
-    const wrapper = mountWithTheme(
+    renderWithTheme(
       <EventCause
+        api={api}
         organization={organization}
         project={project}
         event={event}
         group={group}
-      />,
-      {context}
+      />
     );
 
-    await tick();
-    await tick(); // Run Store.load and fire Action.loadSuccess
-    await tick(); // Run Store.loadSuccess
-    wrapper.update();
+    // Wait for author name to appear
+    expect(await screen.findByText('Max Bittker')).toBeInTheDocument();
 
-    wrapper.find('ExpandButton').simulate('click');
-    await tick();
-    expect(wrapper.find('CommitRow')).toHaveLength(2);
+    // Should show "Show more" button and only 1 commit initially
+    const showMoreButton = screen.getByRole('button', {name: /show more/i});
+    expect(showMoreButton).toBeInTheDocument();
+    expect(screen.getByText(/feat: Enhance suggested commits/i)).toBeInTheDocument();
+    expect(screen.queryByText(/fix: Make things less broken/i)).not.toBeInTheDocument();
 
-    // and hides
-    wrapper.find('ExpandButton').simulate('click');
-    await tick();
-    expect(wrapper.find('CommitRow')).toHaveLength(1);
+    // Expand to show all commits
+    await userEvent.click(showMoreButton);
+
+    // Should now show both commits and button text changes to "Show less"
+    expect(screen.getByText(/feat: Enhance suggested commits/i)).toBeInTheDocument();
+    expect(screen.getByText(/fix: Make things less broken/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: /show less/i})).toBeInTheDocument();
+
+    // Collapse back
+    await userEvent.click(screen.getByRole('button', {name: /show less/i}));
+
+    // Should show only 1 commit again
+    expect(screen.getByText(/feat: Enhance suggested commits/i)).toBeInTheDocument();
+    expect(screen.queryByText(/fix: Make things less broken/i)).not.toBeInTheDocument();
   });
 
   it('shows unassociated email warning', async function () {
-    Client.addMockResponse({
+    MockApiClient.addMockResponse({
       method: 'GET',
       url: `/projects/${organization.slug}/${project.slug}/events/${event.id}/committers/`,
       body: {
@@ -136,23 +142,21 @@ describe('EventCause', function () {
       },
     });
 
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <EventCause
+        api={api}
         organization={organization}
         project={project}
         event={event}
         group={group}
-      />,
-      {context}
+      />
     );
 
-    await tick();
-    await tick(); // Run Store.load and fire Action.loadSuccess
-    await tick(); // Run Store.loadSuccess
-    wrapper.update();
+    // Wait for commit to appear
+    expect(await screen.findByText('Somebody else')).toBeInTheDocument();
+    expect(screen.getByText(/fix: Make things less broken/i)).toBeInTheDocument();
 
-    expect(wrapper.find('CommitRow')).toHaveLength(1);
-    expect(wrapper.find('EmailWarningIcon').exists()).toBe(true);
-    expect(wrapper.find('Hovercard').exists()).toBe(true);
+    // Should show warning icon (check using querySelector for data-test-id)
+    expect(container.querySelector('[data-test-id="email-warning"]')).toBeInTheDocument();
   });
 });

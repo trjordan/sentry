@@ -121,6 +121,16 @@ class DropdownMenu extends React.Component<Props, State> {
 
   componentWillUnmount() {
     document.removeEventListener('click', this.checkClickOutside, true);
+    
+    // Clear any pending timers to prevent state updates after unmount
+    if (this.mouseLeaveId) {
+      window.clearTimeout(this.mouseLeaveId);
+      this.mouseLeaveId = null;
+    }
+    if (this.mouseEnterId) {
+      window.clearTimeout(this.mouseEnterId);
+      this.mouseEnterId = null;
+    }
   }
 
   dropdownMenu: Element | null = null;

@@ -1,12 +1,12 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import CircleIndicator from 'app/components/circleIndicator';
 
 describe('CircleIndicator', function () {
   it('renders', function () {
-    const wrapper = mountWithTheme(<CircleIndicator />);
-    expect(wrapper).toSnapshot();
+    const {container} = renderWithTheme(<CircleIndicator />);
+    expect(container.firstChild).toBeInTheDocument();
   });
 });

@@ -1,13 +1,12 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {selectByValue} from 'sentry-test/select-new';
+import {fireEvent, renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import {Form, SelectField} from 'app/components/forms';
 
 describe('SelectField', function () {
   it('renders without form context', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <SelectField
         options={[
           {label: 'a', value: 'a'},
@@ -17,53 +16,37 @@ describe('SelectField', function () {
         value="a"
       />
     );
-    expect(wrapper).toSnapshot();
+    expect(container).toMatchSnapshot();
   });
 
   it('renders with flat choices', function () {
-    const wrapper = mountWithTheme(
-      <SelectField choices={['a', 'b', 'c']} name="fieldName" />,
-      {
-        context: {
-          form: {
-            data: {
-              fieldName: 'fieldValue',
-            },
-            errors: {},
-          },
-        },
-      }
+    const {container} = renderWithTheme(
+      <Form initialData={{fieldName: 'fieldValue'}}>
+        <SelectField choices={['a', 'b', 'c']} name="fieldName" />
+      </Form>
     );
-    expect(wrapper).toSnapshot();
+    expect(container).toMatchSnapshot();
   });
 
   it('renders with paired choices', function () {
-    const wrapper = mountWithTheme(
-      <SelectField
-        choices={[
-          ['a', 'abc'],
-          ['b', 'bcd'],
-          ['c', 'cde'],
-        ]}
-        name="fieldName"
-      />,
-      {
-        context: {
-          form: {
-            data: {
-              fieldName: 'fieldValue',
-            },
-            errors: {},
-          },
-        },
-      }
+    const {container} = renderWithTheme(
+      <Form initialData={{fieldName: 'fieldValue'}}>
+        <SelectField
+          choices={[
+            ['a', 'abc'],
+            ['b', 'bcd'],
+            ['c', 'cde'],
+          ]}
+          name="fieldName"
+        />
+      </Form>
     );
-    expect(wrapper).toSnapshot();
+    expect(container).toMatchSnapshot();
   });
 
-  it('can change value and submit', function () {
+  it('can change value and submit', async function () {
     const mock = jest.fn();
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <Form onSubmit={mock}>
         <SelectField
           options={[
@@ -74,8 +57,15 @@ describe('SelectField', function () {
         />
       </Form>
     );
-    selectByValue(wrapper, 'a', {name: 'fieldName'});
-    wrapper.find('Form').simulate('submit');
+    // Focus input and trigger keyDown to open menu  
+    const input = container.querySelector('#id-fieldName input');
+    input.focus();
+    fireEvent.keyDown(input, {key: 'ArrowDown', code: 'ArrowDown'});
+    
+    const optionA = await screen.findByRole('option', {name: /a/i});
+    fireEvent.click(optionA);
+
+    fireEvent.submit(screen.getByRole('form'));
     expect(mock).toHaveBeenCalledWith(
       {fieldName: 'a'},
       expect.anything(),
@@ -83,9 +73,9 @@ describe('SelectField', function () {
     );
   });
 
-  it('can set the value to empty string via props with no options', function () {
+  it('can set the value to empty string via props with no options', async function () {
     const mock = jest.fn();
-    const wrapper = mountWithTheme(
+    const {rerender, container} = renderWithTheme(
       <SelectField
         options={[
           {label: 'a', value: 'a'},
@@ -96,14 +86,27 @@ describe('SelectField', function () {
       />
     );
     // Select a value so there is an option selected.
-    selectByValue(wrapper, 'a', {name: 'fieldName'});
+    const input = container.querySelector('#id-fieldName input');
+    input.focus();
+    fireEvent.keyDown(input, {key: 'ArrowDown', code: 'ArrowDown'});
+    
+    const optionA = await screen.findByRole('option', {name: /a/i});
+    fireEvent.click(optionA);
+    
     expect(mock).toHaveBeenCalledTimes(1);
     expect(mock).toHaveBeenLastCalledWith('a');
 
     // Update props to remove value and options.
-    wrapper.setProps({value: '', options: []});
-    wrapper.update();
-    expect(wrapper.find('SelectPicker').props().value).toEqual('');
+    rerender(
+      <SelectField
+        value=""
+        options={[]}
+        name="fieldName"
+        onChange={mock}
+      />
+    );
+    const selectInput = container.querySelector('[name="fieldName"]');
+    expect(selectInput).toHaveValue('');
 
     // second update.
     expect(mock).toHaveBeenCalledTimes(2);
@@ -111,9 +114,9 @@ describe('SelectField', function () {
   });
 
   describe('Multiple', function () {
-    it('selects multiple values and submits', function () {
+    it('selects multiple values and submits', async function () {
       const mock = jest.fn();
-      const wrapper = mountWithTheme(
+      const {container} = renderWithTheme(
         <Form onSubmit={mock}>
           <SelectField
             multiple
@@ -125,8 +128,15 @@ describe('SelectField', function () {
           />
         </Form>
       );
-      selectByValue(wrapper, 'a', {name: 'fieldName'});
-      wrapper.find('Form').simulate('submit');
+      // Open the select dropdown by keyDown
+      const input = container.querySelector('#id-fieldName input');
+      input.focus();
+      fireEvent.keyDown(input, {key: 'ArrowDown', code: 'ArrowDown'});
+      
+      const optionA = await screen.findByRole('option', {name: /a/i});
+      fireEvent.click(optionA);
+
+      fireEvent.submit(screen.getByRole('form'));
       expect(mock).toHaveBeenCalledWith(
         {fieldName: ['a']},
         expect.anything(),

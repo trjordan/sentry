@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import ContextSummary from 'app/components/events/contextSummary/contextSummary';
 import ContextSummaryGPU from 'app/components/events/contextSummary/contextSummaryGPU';
@@ -55,8 +55,8 @@ describe('ContextSummary', function () {
         contexts: {},
       };
 
-      const wrapper = mountWithTheme(<ContextSummary event={event} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummary event={event} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('renders nothing with a single user context', () => {
@@ -66,8 +66,8 @@ describe('ContextSummary', function () {
         contexts: {},
       };
 
-      const wrapper = mountWithTheme(<ContextSummary event={event} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummary event={event} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('should bail out with empty contexts', () => {
@@ -80,8 +80,8 @@ describe('ContextSummary', function () {
         },
       };
 
-      const wrapper = mountWithTheme(<ContextSummary event={event} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummary event={event} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('renders at least three contexts', () => {
@@ -93,8 +93,8 @@ describe('ContextSummary', function () {
         },
       };
 
-      const wrapper = mountWithTheme(<ContextSummary event={event} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummary event={event} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('renders up to four contexts', () => {
@@ -109,8 +109,8 @@ describe('ContextSummary', function () {
         },
       };
 
-      const wrapper = mountWithTheme(<ContextSummary event={event} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummary event={event} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('should prefer client_os over os', () => {
@@ -125,8 +125,8 @@ describe('ContextSummary', function () {
         },
       };
 
-      const wrapper = mountWithTheme(<ContextSummary event={event} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummary event={event} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('renders client_os too', () => {
@@ -140,8 +140,8 @@ describe('ContextSummary', function () {
         },
       };
 
-      const wrapper = mountWithTheme(<ContextSummary event={event} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummary event={event} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('should skip non-default named contexts', () => {
@@ -156,8 +156,8 @@ describe('ContextSummary', function () {
         },
       };
 
-      const wrapper = mountWithTheme(<ContextSummary event={event} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummary event={event} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('should skip a missing user context', () => {
@@ -171,8 +171,8 @@ describe('ContextSummary', function () {
         },
       };
 
-      const wrapper = mountWithTheme(<ContextSummary event={event} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummary event={event} />);
+      expect(container.firstChild).toSnapshot();
     });
   });
 });
@@ -188,8 +188,8 @@ describe('OsSummary', function () {
         name: 'Mac OS X',
       };
 
-      const wrapper = mountWithTheme(<ContextSummaryOS data={os} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummaryOS data={os} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('renders the kernel version when no version', () => {
@@ -200,8 +200,8 @@ describe('OsSummary', function () {
         name: 'Mac OS X',
       };
 
-      const wrapper = mountWithTheme(<ContextSummaryOS data={os} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummaryOS data={os} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('renders unknown when no version', () => {
@@ -211,8 +211,8 @@ describe('OsSummary', function () {
         name: 'Mac OS X',
       };
 
-      const wrapper = mountWithTheme(<ContextSummaryOS data={os} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummaryOS data={os} />);
+      expect(container.firstChild).toSnapshot();
     });
   });
 });
@@ -226,8 +226,8 @@ describe('GpuSummary', function () {
         version: 'OpenGL ES 3.2 v1.r22p0-01rel0.f294e54ceb2cb2d81039204fa4b0402e',
       };
 
-      const wrapper = mountWithTheme(<ContextSummaryGPU data={gpu} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummaryGPU data={gpu} />);
+      expect(container.firstChild).toSnapshot();
     });
 
     it('renders unknown when no vendor', () => {
@@ -236,8 +236,8 @@ describe('GpuSummary', function () {
         name: 'Apple A8 GPU',
       };
 
-      const wrapper = mountWithTheme(<ContextSummaryGPU data={gpu} />);
-      expect(wrapper).toSnapshot();
+      const {container} = renderWithTheme(<ContextSummaryGPU data={gpu} />);
+      expect(container.firstChild).toSnapshot();
     });
   });
 });
@@ -254,10 +254,13 @@ describe('UserSummary', function () {
         data: {siblings: ['Charlie Dog'], dreamsOf: 'squirrels'},
       };
 
-      const wrapper1 = mountWithTheme(<ContextSummaryUser data={user1} />);
-      expect(wrapper1.find('[data-test-id="user-title"]').render().text()).toEqual(
+      const {container: container1, unmount: unmount1} = renderWithTheme(
+        <ContextSummaryUser data={user1} />
+      );
+      expect(container1.querySelector('[data-test-id="user-title"]')).toHaveTextContent(
         user1.email
       );
+      unmount1();
 
       const user2 = {
         ip_address: '12.31.20.12',
@@ -267,10 +270,13 @@ describe('UserSummary', function () {
         data: {siblings: ['Charlie Dog'], dreamsOf: 'squirrels'},
       };
 
-      const wrapper2 = mountWithTheme(<ContextSummaryUser data={user2} />);
-      expect(wrapper2.find('[data-test-id="user-title"]').render().text()).toEqual(
+      const {container: container2, unmount: unmount2} = renderWithTheme(
+        <ContextSummaryUser data={user2} />
+      );
+      expect(container2.querySelector('[data-test-id="user-title"]')).toHaveTextContent(
         user2.ip_address
       );
+      unmount2();
 
       const user3 = {
         id: '26',
@@ -279,10 +285,13 @@ describe('UserSummary', function () {
         data: {siblings: ['Charlie Dog'], dreamsOf: 'squirrels'},
       };
 
-      const wrapper3 = mountWithTheme(<ContextSummaryUser data={user3} />);
-      expect(wrapper3.find('[data-test-id="user-title"]').render().text()).toEqual(
+      const {container: container3, unmount: unmount3} = renderWithTheme(
+        <ContextSummaryUser data={user3} />
+      );
+      expect(container3.querySelector('[data-test-id="user-title"]')).toHaveTextContent(
         user3.id
       );
+      unmount3();
 
       const user4 = {
         username: 'maiseythedog',
@@ -290,8 +299,10 @@ describe('UserSummary', function () {
         data: {siblings: ['Charlie Dog'], dreamsOf: 'squirrels'},
       };
 
-      const wrapper4 = mountWithTheme(<ContextSummaryUser data={user4} />);
-      expect(wrapper4.find('[data-test-id="user-title"]').render().text()).toEqual(
+      const {container: container4} = renderWithTheme(
+        <ContextSummaryUser data={user4} />
+      );
+      expect(container4.querySelector('[data-test-id="user-title"]')).toHaveTextContent(
         user4.username
       );
     });
@@ -302,11 +313,11 @@ describe('UserSummary', function () {
         data: {siblings: ['Charlie Dog'], dreamsOf: 'squirrels'},
       };
 
-      const wrapper = mountWithTheme(<ContextSummaryUser data={user} />);
-      expect(wrapper.find('[data-test-id="user-title"]')).toHaveLength(0);
-      expect(wrapper.find('[data-test-id="no-summary-title"]').text()).toEqual(
-        'Unknown User'
-      );
+      const {container} = renderWithTheme(<ContextSummaryUser data={user} />);
+      expect(screen.queryByTestId('user-title')).not.toBeInTheDocument();
+      expect(
+        container.querySelector('[data-test-id="no-summary-title"]')
+      ).toHaveTextContent('Unknown User');
     });
 
     it('does not use filtered values for title', function () {
@@ -314,11 +325,13 @@ describe('UserSummary', function () {
         email: FILTER_MASK,
       };
 
-      const wrapper1 = mountWithTheme(<ContextSummaryUser data={user1} />);
-      expect(wrapper1.find('[data-test-id="user-title"]')).toHaveLength(0);
-      expect(wrapper1.find('[data-test-id="no-summary-title"]').text()).toEqual(
-        'Unknown User'
+      const {container: container1} = renderWithTheme(
+        <ContextSummaryUser data={user1} />
       );
+      expect(screen.queryByTestId('user-title')).not.toBeInTheDocument();
+      expect(
+        container1.querySelector('[data-test-id="no-summary-title"]')
+      ).toHaveTextContent('Unknown User');
 
       // TODO: currently, the IP filter just eliminates IP addresses rather than
       // filtering them like other user data, so here, where you'd expect a filtered
@@ -329,21 +342,26 @@ describe('UserSummary', function () {
         id: FILTER_MASK,
       };
 
-      const wrapper2 = mountWithTheme(<ContextSummaryUser data={user2} />);
-      expect(wrapper2.find('[data-test-id="user-title"]')).toHaveLength(0);
-      expect(wrapper2.find('[data-test-id="no-summary-title"]').text()).toEqual(
-        'Unknown User'
+      const {container: container2, unmount} = renderWithTheme(
+        <ContextSummaryUser data={user2} />
       );
+      expect(screen.queryByTestId('user-title')).not.toBeInTheDocument();
+      expect(
+        container2.querySelector('[data-test-id="no-summary-title"]')
+      ).toHaveTextContent('Unknown User');
+      unmount();
 
       const user3 = {
         username: FILTER_MASK,
       };
 
-      const wrapper3 = mountWithTheme(<ContextSummaryUser data={user3} />);
-      expect(wrapper3.find('[data-test-id="user-title"]')).toHaveLength(0);
-      expect(wrapper3.find('[data-test-id="no-summary-title"]').text()).toEqual(
-        'Unknown User'
+      const {container: container3} = renderWithTheme(
+        <ContextSummaryUser data={user3} />
       );
+      expect(screen.queryByTestId('user-title')).not.toBeInTheDocument();
+      expect(
+        container3.querySelector('[data-test-id="no-summary-title"]')
+      ).toHaveTextContent('Unknown User');
     });
 
     it('does not use filtered values for avatar', function () {
@@ -355,24 +373,37 @@ describe('UserSummary', function () {
         name: FILTER_MASK,
       };
 
-      const wrapper1 = mountWithTheme(<ContextSummaryUser data={user1} />);
-      expect(wrapper1.find('LetterAvatar').text()).toEqual('?');
+      const {container: container1} = renderWithTheme(
+        <ContextSummaryUser data={user1} />
+      );
+      expect(
+        container1.querySelector('[data-test-id="letter-avatar"]')
+      ).toBeInTheDocument();
 
       const user2 = {
         id: '26',
         email: FILTER_MASK,
       };
 
-      const wrapper2 = mountWithTheme(<ContextSummaryUser data={user2} />);
-      expect(wrapper2.find('LetterAvatar').text()).toEqual('?');
+      const {container: container2, unmount: unmount2} = renderWithTheme(
+        <ContextSummaryUser data={user2} />
+      );
+      expect(
+        container2.querySelector('[data-test-id="letter-avatar"]')
+      ).toBeInTheDocument();
+      unmount2();
 
       const user3 = {
         id: '26',
         username: FILTER_MASK,
       };
 
-      const wrapper3 = mountWithTheme(<ContextSummaryUser data={user3} />);
-      expect(wrapper3.find('LetterAvatar').text()).toEqual('?');
+      const {container: container3} = renderWithTheme(
+        <ContextSummaryUser data={user3} />
+      );
+      expect(
+        container3.querySelector('[data-test-id="letter-avatar"]')
+      ).toBeInTheDocument();
     });
   });
 });

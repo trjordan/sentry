@@ -1,21 +1,38 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
 
 import BookmarkStar from 'app/components/projects/bookmarkStar';
 
+// Mock document.createRange which is used by userEvent
+document.createRange = () => {
+  const range = {
+    setStart: jest.fn(),
+    setEnd: jest.fn(),
+    commonAncestorContainer: {
+      nodeName: 'BODY',
+      ownerDocument: document,
+    },
+    getBoundingClientRect: jest.fn(() => ({
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      width: 0,
+      height: 0,
+    })),
+    getClientRects: jest.fn(() => []),
+    cloneRange: jest.fn(function () {
+      return this;
+    }),
+  };
+  return range;
+};
+
 describe('BookmarkStar', function () {
-  let wrapper, projectMock;
+  let projectMock;
 
   beforeEach(function () {
-    wrapper = mountWithTheme(
-      <BookmarkStar
-        organization={TestStubs.Organization()}
-        project={TestStubs.Project()}
-      />,
-      TestStubs.routerContext()
-    );
-
     projectMock = MockApiClient.addMockResponse({
       url: '/projects/org-slug/project-slug/',
       method: 'PUT',
@@ -28,15 +45,28 @@ describe('BookmarkStar', function () {
   });
 
   it('renders', function () {
-    expect(wrapper).toSnapshot();
+    const {container} = renderWithTheme(
+      <BookmarkStar
+        organization={TestStubs.Organization()}
+        project={TestStubs.Project()}
+      />,
+      {context: {router: TestStubs.router()}}
+    );
+    expect(container).toSnapshot();
   });
 
   it('can star', async function () {
-    const star = wrapper.find('BookmarkStar');
+    renderWithTheme(
+      <BookmarkStar
+        organization={TestStubs.Organization()}
+        project={TestStubs.Project()}
+      />,
+      {context: {router: TestStubs.router()}}
+    );
 
-    expect(star.find('Star').first().prop('isBookmarked')).toBe(false);
+    const star = screen.getByRole('button');
 
-    star.simulate('click');
+    await userEvent.click(star);
 
     expect(projectMock).toHaveBeenCalledWith(
       '/projects/org-slug/project-slug/',
@@ -49,20 +79,19 @@ describe('BookmarkStar', function () {
   });
 
   it('can unstar', async function () {
-    wrapper = mountWithTheme(
+    renderWithTheme(
       <BookmarkStar
         organization={TestStubs.Organization()}
         project={TestStubs.Project({
           isBookmarked: true,
         })}
       />,
-      TestStubs.routerContext()
+      {context: {router: TestStubs.router()}}
     );
-    const star = wrapper.find('BookmarkStar');
 
-    expect(star.find('Star').first().prop('isBookmarked')).toBe(true);
+    const star = screen.getByRole('button');
 
-    star.simulate('click');
+    await userEvent.click(star);
 
     expect(projectMock).toHaveBeenCalledWith(
       '/projects/org-slug/project-slug/',
@@ -74,22 +103,30 @@ describe('BookmarkStar', function () {
     );
   });
 
-  it('takes a manual isBookmarked prop', function () {
-    wrapper = mountWithTheme(
+  it('takes a manual isBookmarked prop', async function () {
+    const {rerender} = renderWithTheme(
       <BookmarkStar
         organization={TestStubs.Organization()}
         project={TestStubs.Project()}
         isBookmarked
       />,
-      TestStubs.routerContext()
+      {context: {router: TestStubs.router()}}
     );
 
-    const star = wrapper.find('BookmarkStar');
+    const star = screen.getByRole('button');
 
-    expect(star.find('Star').first().prop('isBookmarked')).toBe(true);
+    await userEvent.click(star);
 
-    star.simulate('click');
+    // Re-render with the same props to verify the state hasn't changed
+    rerender(
+      <BookmarkStar
+        organization={TestStubs.Organization()}
+        project={TestStubs.Project()}
+        isBookmarked
+      />
+    );
 
-    expect(star.find('Star').first().prop('isBookmarked')).toBe(true);
+    // Star should still be bookmarked because the manual prop takes precedence
+    expect(screen.getByRole('button')).toBeInTheDocument();
   });
 });

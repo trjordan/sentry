@@ -54,7 +54,7 @@ export default function EventVitals({event, showSectionHeader = true}: Props) {
         <SectionHeading>
           {t('Web Vitals')}
           {isOutdatedSdk(event) && (
-            <WarningIconContainer size="sm">
+            <WarningIconContainer size="sm" data-testid="outdated-sdk-warning">
               <Tooltip
                 title={t(
                   'These vitals were collected using an outdated SDK version and may not be accurate. To ensure accurate web vitals in new transaction events, please update your SDK to the latest version.'
@@ -100,12 +100,12 @@ function EventVital({event, name}: EventVitalProps) {
   const thresholdValue = formattedValue(record, record?.poorThreshold ?? 0);
 
   return (
-    <EventVitalContainer>
+    <EventVitalContainer data-testid="event-vital">
       <StyledPanel failedThreshold={failedThreshold}>
         <Name>{record.name ?? name}</Name>
         <ValueRow>
           {failedThreshold ? (
-            <FireIconContainer size="sm">
+            <FireIconContainer size="sm" data-testid="icon-fire">
               <Tooltip
                 title={t('Fails threshold at %s.', thresholdValue)}
                 position="top"

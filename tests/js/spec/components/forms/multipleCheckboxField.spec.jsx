@@ -1,13 +1,13 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
-import {MultipleCheckboxField} from 'app/components/forms';
+import {Form, MultipleCheckboxField} from 'app/components/forms';
 
 describe('MultipleCheckboxField', function () {
   describe('render()', function () {
     it('renders without form context', function () {
-      const wrapper = mountWithTheme(
+      const {container} = renderWithTheme(
         <MultipleCheckboxField
           name="fieldName"
           choices={[
@@ -17,30 +17,22 @@ describe('MultipleCheckboxField', function () {
           value={['1']}
         />
       );
-      expect(wrapper).toSnapshot();
+      expect(container).toSnapshot();
     });
 
     it('renders with form context', function () {
-      const wrapper = mountWithTheme(
-        <MultipleCheckboxField
-          name="fieldName"
-          choices={[
-            ['1', 'On'],
-            ['2', 'Off'],
-          ]}
-        />,
-        {
-          context: {
-            form: {
-              data: {
-                fieldName: ['1'],
-              },
-              errors: {},
-            },
-          },
-        }
+      const {container} = renderWithTheme(
+        <Form initialData={{fieldName: ['1']}}>
+          <MultipleCheckboxField
+            name="fieldName"
+            choices={[
+              ['1', 'On'],
+              ['2', 'Off'],
+            ]}
+          />
+        </Form>
       );
-      expect(wrapper).toSnapshot();
+      expect(container).toSnapshot();
     });
   });
 });

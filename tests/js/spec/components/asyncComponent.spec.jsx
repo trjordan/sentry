@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'app/api';
 import AsyncComponent from 'app/components/asyncComponent';
@@ -32,9 +32,9 @@ describe('AsyncComponent', function () {
         message: 'hi',
       },
     });
-    const wrapper = mountWithTheme(<TestAsyncComponent />);
-    expect(wrapper.find('div')).toHaveLength(1);
-    expect(wrapper.find('div').text()).toEqual('hi');
+    renderWithTheme(<TestAsyncComponent />);
+
+    expect(screen.getByText('hi')).toBeInTheDocument();
   });
 
   it('renders error message', function () {
@@ -47,9 +47,9 @@ describe('AsyncComponent', function () {
       },
       statusCode: 400,
     });
-    const wrapper = mountWithTheme(<TestAsyncComponent />);
-    expect(wrapper.find('LoadingError')).toHaveLength(1);
-    expect(wrapper.find('LoadingError').text()).toEqual('oops there was a problem');
+    renderWithTheme(<TestAsyncComponent />);
+
+    expect(screen.getByText('oops there was a problem')).toBeInTheDocument();
   });
 
   describe('multi-route component', () => {
@@ -79,23 +79,24 @@ describe('AsyncComponent', function () {
         'onLoadAllEndpointsSuccess'
       );
 
-      const wrapper = mountWithTheme(<MultiRouteComponent />);
+      const {container} = renderWithTheme(<MultiRouteComponent />);
 
-      expect(wrapper.state('loading')).toEqual(true);
-      expect(wrapper.state('remainingRequests')).toEqual(2);
+      // Should show loading indicator initially
+      expect(container.querySelector('.loading-indicator')).toBeInTheDocument();
 
+      // After 40ms, still loading - no requests completed yet
       jest.advanceTimersByTime(40);
-      expect(wrapper.state('loading')).toEqual(true);
-      expect(wrapper.state('remainingRequests')).toEqual(2);
-
-      jest.advanceTimersByTime(40);
-      expect(wrapper.state('loading')).toEqual(true);
-      expect(wrapper.state('remainingRequests')).toEqual(1);
+      expect(container.querySelector('.loading-indicator')).toBeInTheDocument();
       expect(mockOnAllEndpointsSuccess).not.toHaveBeenCalled();
 
+      // After 80ms total, first request completes (50ms timeout)
       jest.advanceTimersByTime(40);
-      expect(wrapper.state('loading')).toEqual(false);
-      expect(wrapper.state('remainingRequests')).toEqual(0);
+      expect(container.querySelector('.loading-indicator')).toBeInTheDocument();
+      expect(mockOnAllEndpointsSuccess).not.toHaveBeenCalled();
+
+      // After 120ms total, second request completes (100ms timeout)
+      jest.advanceTimersByTime(40);
+      expect(container.querySelector('.loading-indicator')).not.toBeInTheDocument();
       expect(mockOnAllEndpointsSuccess).toHaveBeenCalled();
 
       jest.restoreAllMocks();

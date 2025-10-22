@@ -1,17 +1,14 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
 
 import SplitDiff from 'app/components/splitDiff';
 
 describe('SplitDiff', function () {
-  beforeEach(function () {});
-
-  afterEach(function () {});
-
   it('renders', function () {
-    const wrapper = mountWithTheme(<SplitDiff base="restaurant" target="aura" />);
-    expect(wrapper).toSnapshot();
+    renderWithTheme(<SplitDiff base="restaurant" target="aura" />);
+    expect(screen.getByText('restaurant')).toBeInTheDocument();
+    expect(screen.getByText('aura')).toBeInTheDocument();
   });
 
   it('renders with newlines', function () {
@@ -21,7 +18,11 @@ describe('SplitDiff', function () {
     const target = `aura
     and your aura
     common`;
-    const wrapper = mountWithTheme(<SplitDiff base={base} target={target} />);
-    expect(wrapper).toSnapshot();
+    renderWithTheme(<SplitDiff base={base} target={target} />);
+    expect(screen.getByText('this is my restaurant')).toBeInTheDocument();
+    expect(screen.getByText('and restaurant')).toBeInTheDocument();
+    expect(screen.getByText('aura')).toBeInTheDocument();
+    expect(screen.getByText('and your aura')).toBeInTheDocument();
+    expect(screen.getAllByText('common')).toHaveLength(2);
   });
 });

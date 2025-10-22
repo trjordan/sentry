@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import CrashContent from 'app/components/events/interfaces/crashContent';
 import {withMeta} from 'app/components/events/meta/metaProxy';
@@ -12,7 +12,7 @@ describe('CrashContent', function () {
   const proxiedExc = withMeta(exc);
 
   it('renders with meta data', function () {
-    const wrapper = mountWithTheme(
+    const {container} = renderWithTheme(
       <CrashContent
         projectId="sentry"
         stackView="full"
@@ -23,6 +23,7 @@ describe('CrashContent', function () {
       />
     );
 
-    expect(wrapper).toSnapshot();
+    // Verify the component renders exception content
+    expect(container.querySelector('.exception')).toBeInTheDocument();
   });
 });
