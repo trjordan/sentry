@@ -18,13 +18,12 @@ describe('AvatarCropper', function () {
       'should return a negative diff when yDiff and xDiff ' +
         'are positive (cropper is getting smaller)',
       function () {
+        const ref = React.createRef();
         renderWithTheme(
-          <AvatarCropper model={USER} updateDataUrlState={function () {}} />
+          <AvatarCropper ref={ref} model={USER} updateDataUrlState={function () {}} />
         );
-        // Since getDiffNW is a pure calculation method, we can test it directly
-        // The formula is: (yDiff - yDiff * 2 + (xDiff - xDiff * 2)) / 2
-        // For (4, 5): (4 - 8 + (5 - 10)) / 2 = (-4 + (-5)) / 2 = -4.5
-        const diff = (4 - 4 * 2 + (5 - 5 * 2)) / 2;
+        const cropper = ref.current;
+        const diff = cropper.getDiffNW(4, 5);
         expect(diff).toEqual(-4.5);
       }
     );
@@ -33,11 +32,12 @@ describe('AvatarCropper', function () {
       'should return a positive diff when yDiff and xDiff ' +
         'are negative (cropper is getting bigger)',
       function () {
+        const ref = React.createRef();
         renderWithTheme(
-          <AvatarCropper model={USER} updateDataUrlState={function () {}} />
+          <AvatarCropper ref={ref} model={USER} updateDataUrlState={function () {}} />
         );
-        // For (-4, -5): (-4 - (-8) + (-5 - (-10))) / 2 = (4 + 5) / 2 = 4.5
-        const diff = (-4 - -4 * 2 + (-5 - -5 * 2)) / 2;
+        const cropper = ref.current;
+        const diff = cropper.getDiffNW(-4, -5);
         expect(diff).toEqual(4.5);
       }
     );
@@ -48,12 +48,12 @@ describe('AvatarCropper', function () {
       'should return a positive diff when yDiff is negative and ' +
         'xDiff is positive (cropper is getting bigger)',
       function () {
+        const ref = React.createRef();
         renderWithTheme(
-          <AvatarCropper model={USER} updateDataUrlState={function () {}} />
+          <AvatarCropper ref={ref} model={USER} updateDataUrlState={function () {}} />
         );
-        // The formula is: (yDiff - yDiff * 2 + xDiff) / 2
-        // For (-4, 5): (-4 - (-8) + 5) / 2 = (4 + 5) / 2 = 4.5
-        const diff = (-4 - -4 * 2 + 5) / 2;
+        const cropper = ref.current;
+        const diff = cropper.getDiffNE(-4, 5);
         expect(diff).toEqual(4.5);
       }
     );
@@ -62,11 +62,12 @@ describe('AvatarCropper', function () {
       'should return a negative diff when yDiff is positive and ' +
         'xDiff is negative (cropper is getting smaller)',
       function () {
+        const ref = React.createRef();
         renderWithTheme(
-          <AvatarCropper model={USER} updateDataUrlState={function () {}} />
+          <AvatarCropper ref={ref} model={USER} updateDataUrlState={function () {}} />
         );
-        // For (4, -5): (4 - 8 + (-5)) / 2 = (-4 + (-5)) / 2 = -4.5
-        const diff = (4 - 4 * 2 + -5) / 2;
+        const cropper = ref.current;
+        const diff = cropper.getDiffNE(4, -5);
         expect(diff).toEqual(-4.5);
       }
     );
@@ -77,12 +78,12 @@ describe('AvatarCropper', function () {
       'should return a positive diff when yDiff and ' +
         'xDiff are positive (cropper is getting bigger)',
       function () {
+        const ref = React.createRef();
         renderWithTheme(
-          <AvatarCropper model={USER} updateDataUrlState={function () {}} />
+          <AvatarCropper ref={ref} model={USER} updateDataUrlState={function () {}} />
         );
-        // The formula is: (yDiff + xDiff) / 2
-        // For (4, 5): (4 + 5) / 2 = 4.5
-        const diff = (4 + 5) / 2;
+        const cropper = ref.current;
+        const diff = cropper.getDiffSE(4, 5);
         expect(diff).toEqual(4.5);
       }
     );
@@ -91,11 +92,12 @@ describe('AvatarCropper', function () {
       'should return a negative diff when yDiff and ' +
         'xDiff are negative (cropper is getting smaller)',
       function () {
+        const ref = React.createRef();
         renderWithTheme(
-          <AvatarCropper model={USER} updateDataUrlState={function () {}} />
+          <AvatarCropper ref={ref} model={USER} updateDataUrlState={function () {}} />
         );
-        // For (-4, -5): (-4 + (-5)) / 2 = -4.5
-        const diff = (-4 + -5) / 2;
+        const cropper = ref.current;
+        const diff = cropper.getDiffSE(-4, -5);
         expect(diff).toEqual(-4.5);
       }
     );
@@ -106,12 +108,12 @@ describe('AvatarCropper', function () {
       'should return a positive diff when yDiff is positive and ' +
         'xDiff is negative (cropper is getting bigger)',
       function () {
+        const ref = React.createRef();
         renderWithTheme(
-          <AvatarCropper model={USER} updateDataUrlState={function () {}} />
+          <AvatarCropper ref={ref} model={USER} updateDataUrlState={function () {}} />
         );
-        // The formula is: (yDiff + (xDiff - xDiff * 2)) / 2
-        // For (4, -5): (4 + (-5 - (-10))) / 2 = (4 + 5) / 2 = 4.5
-        const diff = (4 + (-5 - -5 * 2)) / 2;
+        const cropper = ref.current;
+        const diff = cropper.getDiffSW(4, -5);
         expect(diff).toEqual(4.5);
       }
     );
@@ -120,11 +122,12 @@ describe('AvatarCropper', function () {
       'should return a negative diff when yDiff is negative and' +
         'xDiff is positive (cropper is getting smaller)',
       function () {
+        const ref = React.createRef();
         renderWithTheme(
-          <AvatarCropper model={USER} updateDataUrlState={function () {}} />
+          <AvatarCropper ref={ref} model={USER} updateDataUrlState={function () {}} />
         );
-        // For (-4, 5): (-4 + (5 - 10)) / 2 = (-4 + (-5)) / 2 = -4.5
-        const diff = (-4 + (5 - 5 * 2)) / 2;
+        const cropper = ref.current;
+        const diff = cropper.getDiffSW(-4, 5);
         expect(diff).toEqual(-4.5);
       }
     );

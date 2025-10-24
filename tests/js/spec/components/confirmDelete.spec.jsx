@@ -30,7 +30,7 @@ describe('ConfirmDelete', function () {
     // jest had an issue rendering root component snapshot so using ModalDialog instead
     const dialogs = screen.getAllByRole('dialog');
     const dialog = dialogs.find(d => d.classList.contains('modal'));
-    expect(dialog).toBeInTheDocument();
+    expect(dialog).toSnapshot();
   });
 
   it('confirm button is disabled and bypass prop is false when modal opens', async function () {
@@ -45,6 +45,14 @@ describe('ConfirmDelete', function () {
 
     await renderGlobalModal();
 
+    // Check bypass prop - ConfirmDelete always sets bypass={false}
+    // In the original enzyme test, this was: expect(wrapper.find('Confirm').prop('bypass')).toBe(false);
+    // Since ConfirmDelete hardcodes bypass={false}, we verify this by ensuring the component doesn't bypass
+    // (i.e., modal actually opens and doesn't immediately call onConfirm)
+    expect(mock).not.toHaveBeenCalled(); // If bypass was true, onConfirm would be called immediately
+
+    // Check that confirm button is disabled
+    // The button uses aria-disabled instead of the disabled attribute
     expect(screen.getByRole('button', {name: 'Confirm'})).toHaveAttribute(
       'aria-disabled',
       'true'

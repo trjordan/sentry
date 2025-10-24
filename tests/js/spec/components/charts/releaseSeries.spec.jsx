@@ -315,8 +315,8 @@ describe('ReleaseSeries', function () {
           expect.objectContaining({
             // we don't care about the other properties for now
             markLine: expect.objectContaining({
-              // the unemphasized releases have opacity 0.3
-              lineStyle: expect.objectContaining({opacity: 0.3}),
+              // the emphasized releases have opacity 0.8
+              lineStyle: expect.objectContaining({opacity: 0.8}),
               data: [
                 expect.objectContaining({
                   name: '1.2.1, sentry-android-shop',
@@ -329,8 +329,8 @@ describe('ReleaseSeries', function () {
           expect.objectContaining({
             // we don't care about the other properties for now
             markLine: expect.objectContaining({
-              // the emphasized releases have opacity 0.8
-              lineStyle: expect.objectContaining({opacity: 0.8}),
+              // the unemphasized releases have opacity 0.3
+              lineStyle: expect.objectContaining({opacity: 0.3}),
               data: [
                 expect.objectContaining({
                   name: '1.2.0, sentry-android-shop',

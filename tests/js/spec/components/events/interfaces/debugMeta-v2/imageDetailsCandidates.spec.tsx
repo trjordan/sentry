@@ -87,8 +87,9 @@ describe('Debug Meta - Image Details Candidates', function () {
     // The UI shall sort the candidates by source location (alphabetical)
     // Only 3 results are returned, as the UI only displays the Location component
     // when the location is defined and when it is not internal
-    expect(screen.getByText('arizona')).toBeInTheDocument();
-    expect(screen.getByText('burgenland')).toBeInTheDocument();
-    expect(screen.getByText('brussels')).toBeInTheDocument();
+    const locationElements = Array.from(
+      document.querySelectorAll('[class*="FilenameOrLocation"]')
+    ).map(el => el.textContent);
+    expect(locationElements).toEqual(['arizona', 'burgenland', 'brussels']);
   });
 });

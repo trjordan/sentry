@@ -28,7 +28,7 @@ describe('CreateTeamModal', function () {
   afterEach(function () {});
 
   it('calls createTeam action creator on submit', async function () {
-    const routerContext = TestStubs.routerContext();
+    const router = TestStubs.router();
     renderWithTheme(
       <CreateTeamModal
         Body={p => p.children}
@@ -38,7 +38,7 @@ describe('CreateTeamModal', function () {
         onClose={onClose}
         onSuccess={onSuccess}
       />,
-      routerContext
+      {context: {router}}
     );
 
     const input = screen.getByRole('textbox', {name: /team name/i});

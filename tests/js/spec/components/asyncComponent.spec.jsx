@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {renderWithTheme, screen} from 'sentry-test/reactTestingLibrary';
+import {renderWithTheme} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'app/api';
 import AsyncComponent from 'app/components/asyncComponent';
@@ -32,9 +32,12 @@ describe('AsyncComponent', function () {
         message: 'hi',
       },
     });
-    renderWithTheme(<TestAsyncComponent />);
+    const {container} = renderWithTheme(<TestAsyncComponent />);
 
-    expect(screen.getByText('hi')).toBeInTheDocument();
+    // Check that exactly one div is rendered with the text 'hi'
+    const divs = container.querySelectorAll('div');
+    expect(divs).toHaveLength(1);
+    expect(divs[0]).toHaveTextContent('hi');
   });
 
   it('renders error message', function () {
@@ -47,9 +50,14 @@ describe('AsyncComponent', function () {
       },
       statusCode: 400,
     });
-    renderWithTheme(<TestAsyncComponent />);
+    const {container} = renderWithTheme(<TestAsyncComponent />);
 
-    expect(screen.getByText('oops there was a problem')).toBeInTheDocument();
+    // Check that LoadingError component is rendered with the correct text
+    const loadingError = container.querySelector(
+      '[data-test-id="loading-error-message"]'
+    );
+    expect(loadingError).toBeInTheDocument();
+    expect(loadingError).toHaveTextContent('oops there was a problem');
   });
 
   describe('multi-route component', () => {
@@ -79,24 +87,24 @@ describe('AsyncComponent', function () {
         'onLoadAllEndpointsSuccess'
       );
 
-      const {container} = renderWithTheme(<MultiRouteComponent />);
+      const ref = React.createRef();
+      renderWithTheme(<MultiRouteComponent ref={ref} />);
 
-      // Should show loading indicator initially
-      expect(container.querySelector('.loading-indicator')).toBeInTheDocument();
+      expect(ref.current.state.loading).toEqual(true);
+      expect(ref.current.state.remainingRequests).toEqual(2);
 
-      // After 40ms, still loading - no requests completed yet
       jest.advanceTimersByTime(40);
-      expect(container.querySelector('.loading-indicator')).toBeInTheDocument();
+      expect(ref.current.state.loading).toEqual(true);
+      expect(ref.current.state.remainingRequests).toEqual(2);
+
+      jest.advanceTimersByTime(40);
+      expect(ref.current.state.loading).toEqual(true);
+      expect(ref.current.state.remainingRequests).toEqual(1);
       expect(mockOnAllEndpointsSuccess).not.toHaveBeenCalled();
 
-      // After 80ms total, first request completes (50ms timeout)
       jest.advanceTimersByTime(40);
-      expect(container.querySelector('.loading-indicator')).toBeInTheDocument();
-      expect(mockOnAllEndpointsSuccess).not.toHaveBeenCalled();
-
-      // After 120ms total, second request completes (100ms timeout)
-      jest.advanceTimersByTime(40);
-      expect(container.querySelector('.loading-indicator')).not.toBeInTheDocument();
+      expect(ref.current.state.loading).toEqual(false);
+      expect(ref.current.state.remainingRequests).toEqual(0);
       expect(mockOnAllEndpointsSuccess).toHaveBeenCalled();
 
       jest.restoreAllMocks();

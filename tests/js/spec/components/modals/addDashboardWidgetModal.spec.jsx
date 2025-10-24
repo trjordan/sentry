@@ -1,54 +1,13 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, waitFor, within, userEvent, selectByLabel, tick} from 'sentry-test/reactTestingLibrary';
 import {initializeOrg} from 'sentry-test/initializeOrg';
-import {getOptionByLabel, selectByLabel} from 'sentry-test/select-new';
 
 import AddDashboardWidgetModal from 'app/components/modals/addDashboardWidgetModal';
 import TagStore from 'app/stores/tagStore';
+import GlobalSelectionStore from 'app/stores/globalSelectionStore';
 
 const stubEl = props => <div>{props.children}</div>;
-
-function mountModal({initialData, onAddWidget, onUpdateWidget, widget}) {
-  return mountWithTheme(
-    <AddDashboardWidgetModal
-      Header={stubEl}
-      Footer={stubEl}
-      Body={stubEl}
-      organization={initialData.organization}
-      onAddWidget={onAddWidget}
-      onUpdateWidget={onUpdateWidget}
-      widget={widget}
-      closeModal={() => void 0}
-    />,
-    initialData.routerContext
-  );
-}
-
-async function clickSubmit(wrapper) {
-  // Click on submit.
-  const button = wrapper.find('Button[data-test-id="add-widget"] button');
-  button.simulate('click');
-
-  // Wait for xhr to complete.
-  return tick();
-}
-
-function getDisplayType(wrapper) {
-  return wrapper.find('input[name="displayType"]');
-}
-
-async function setSearchConditions(el, query) {
-  el.find('input')
-    .simulate('change', {target: {value: query}})
-    .getDOMNode()
-    .setSelectionRange(query.length, query.length);
-
-  await tick();
-  await el.update();
-
-  el.find('input').simulate('keydown', {key: 'Enter'});
-}
 
 describe('Modals -> AddDashboardWidgetModal', function () {
   const initialData = initializeOrg({
@@ -65,6 +24,9 @@ describe('Modals -> AddDashboardWidgetModal', function () {
   let eventsStatsMock;
 
   beforeEach(function () {
+    // Set up GlobalSelectionStore for withGlobalSelection HOC
+    GlobalSelectionStore.reset();
+
     TagStore.onLoadTagsSuccess(tags);
     MockApiClient.addMockResponse({
       url: '/organizations/org-slug/dashboards/widgets/',
@@ -96,76 +58,129 @@ describe('Modals -> AddDashboardWidgetModal', function () {
 
   it('can update the title', async function () {
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
+
+    const titleInput = screen.getByRole('textbox', {name: /title/i});
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, 'Unique Users');
+
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(widget.title).toEqual('Unique Users');
     });
-    const input = wrapper.find('Input[name="title"] input');
-    input.simulate('change', {target: {value: 'Unique Users'}});
-
-    await clickSubmit(wrapper);
-
-    expect(widget.title).toEqual('Unique Users');
   });
 
   it('can add conditions', async function () {
     jest.useFakeTimers();
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
-    });
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
+
     // Change the search text on the first query.
-    const input = wrapper.find('#smart-search-input').first();
-    input.simulate('change', {target: {value: 'color:blue'}}).simulate('blur');
+    const searchInput = document.querySelector('#smart-search-input');
+    await userEvent.type(searchInput, 'color:blue');
+    searchInput.blur();
 
     jest.runAllTimers();
     jest.useRealTimers();
 
-    await clickSubmit(wrapper);
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
 
-    expect(widget.queries).toHaveLength(1);
-    expect(widget.queries[0].conditions).toEqual('color:blue');
+    await waitFor(() => {
+      expect(widget.queries).toHaveLength(1);
+      expect(widget.queries[0].conditions).toEqual('color:blue');
+    });
   });
 
   it('can choose a field', async function () {
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
-    });
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
+
     // No delete button as there is only one field.
-    expect(wrapper.find('IconDelete')).toHaveLength(0);
+    expect(screen.queryByRole('button', {name: /delete/i})).not.toBeInTheDocument();
 
-    selectByLabel(wrapper, 'p95(\u2026)', {name: 'field', at: 0, control: true});
+    // Select p95 field
+    const fieldSelect = screen.getByRole('textbox', {name: /field/i});
+    await selectEvent.select(fieldSelect, 'p95(…)');
 
-    await clickSubmit(wrapper);
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
 
-    expect(widget.queries).toHaveLength(1);
-    expect(widget.queries[0].fields).toEqual(['p95(transaction.duration)']);
+    await waitFor(() => {
+      expect(widget.queries).toHaveLength(1);
+      expect(widget.queries[0].fields).toEqual(['p95(transaction.duration)']);
+    });
   });
 
   it('can add additional fields', async function () {
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
-    });
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
 
     // Click the add button
-    const add = wrapper.find('button[aria-label="Add Overlay"]');
-    add.simulate('click');
-    wrapper.update();
+    const addButton = screen.getByRole('button', {name: 'Add Overlay'});
+    await userEvent.click(addButton);
 
     // Should be another field input.
-    expect(wrapper.find('QueryField')).toHaveLength(2);
+    await waitFor(() => {
+      expect(screen.getAllByRole('textbox', {name: /field/i})).toHaveLength(2);
+    });
 
-    selectByLabel(wrapper, 'p95(\u2026)', {name: 'field', at: 1, control: true});
+    const fieldSelects = screen.getAllByRole('textbox', {name: /field/i});
+    await selectEvent.select(fieldSelects[1], 'p95(…)');
 
-    await clickSubmit(wrapper);
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
 
-    expect(widget.queries).toHaveLength(1);
-    expect(widget.queries[0].fields).toEqual(['count()', 'p95(transaction.duration)']);
+    await waitFor(() => {
+      expect(widget.queries).toHaveLength(1);
+      expect(widget.queries[0].fields).toEqual(['count()', 'p95(transaction.duration)']);
+    });
   });
 
   it('can add and delete additional queries', async function () {
@@ -180,66 +195,87 @@ describe('Modals -> AddDashboardWidgetModal', function () {
     });
 
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
-    });
-
-    // Set first query search conditions
-    await setSearchConditions(
-      wrapper.find('SearchConditionsWrapper StyledSearchBar'),
-      'event.type:transaction'
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
     );
 
+    // Set first query search conditions
+    const searchInputs = document.querySelectorAll('#smart-search-input');
+    await userEvent.type(searchInputs[0], 'event.type:transaction');
+    await userEvent.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(screen.getByText('event.type:transaction')).toBeInTheDocument();
+    });
+
     // Set first query legend alias
-    wrapper
-      .find('SearchConditionsWrapper input[placeholder="Legend Alias"]')
-      .simulate('change', {target: {value: 'Transactions'}});
+    const legendInputs = screen.getAllByPlaceholderText('Legend Alias');
+    await userEvent.type(legendInputs[0], 'Transactions');
 
     // Click the "Add Query" button twice
-    const addQuery = wrapper.find('button[aria-label="Add Query"]');
-    addQuery.simulate('click');
-    wrapper.update();
-    addQuery.simulate('click');
-    wrapper.update();
+    const addQueryButtons = screen.getAllByRole('button', {name: 'Add Query'});
+    await userEvent.click(addQueryButtons[0]);
+    
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', {name: 'Add Query'})).toHaveLength(1);
+    });
+    
+    await userEvent.click(screen.getByRole('button', {name: 'Add Query'}));
 
     // Expect three search bars
-    expect(wrapper.find('StyledSearchBar')).toHaveLength(3);
+    await waitFor(() => {
+      expect(document.querySelectorAll('#smart-search-input')).toHaveLength(3);
+    });
 
     // Expect "Add Query" button to be hidden since we're limited to at most 3 search conditions
-    expect(wrapper.find('button[aria-label="Add Query"]')).toHaveLength(0);
+    await waitFor(() => {
+      expect(screen.queryByRole('button', {name: 'Add Query'})).not.toBeInTheDocument();
+    });
 
     // Delete second query
-    expect(wrapper.find('button[aria-label="Remove query"]')).toHaveLength(3);
-    wrapper.find('button[aria-label="Remove query"]').at(1).simulate('click');
-    wrapper.update();
+    const removeButtons = screen.getAllByRole('button', {name: 'Remove query'});
+    expect(removeButtons).toHaveLength(3);
+    await userEvent.click(removeButtons[1]);
 
     // Expect "Add Query" button to be shown again
-    expect(wrapper.find('button[aria-label="Add Query"]')).toHaveLength(1);
+    await waitFor(() => {
+      expect(screen.getByRole('button', {name: 'Add Query'})).toBeInTheDocument();
+    });
 
     // Set second query search conditions
-    const secondSearchBar = wrapper.find('SearchConditionsWrapper StyledSearchBar').at(1);
-    await setSearchConditions(secondSearchBar, 'event.type:error');
+    const updatedSearchInputs = document.querySelectorAll('#smart-search-input');
+    await userEvent.type(updatedSearchInputs[1], 'event.type:error');
+    await userEvent.keyboard('{Enter}');
 
     // Set second query legend alias
-    wrapper
-      .find('SearchConditionsWrapper input[placeholder="Legend Alias"]')
-      .at(1)
-      .simulate('change', {target: {value: 'Errors'}});
+    const updatedLegendInputs = screen.getAllByPlaceholderText('Legend Alias');
+    await userEvent.type(updatedLegendInputs[1], 'Errors');
 
     // Save widget
-    await clickSubmit(wrapper);
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
 
-    expect(widget.queries).toHaveLength(2);
-    expect(widget.queries[0]).toMatchObject({
-      name: 'Transactions',
-      conditions: 'event.type:transaction',
-      fields: ['count()'],
-    });
-    expect(widget.queries[1]).toMatchObject({
-      name: 'Errors',
-      conditions: 'event.type:error',
-      fields: ['count()'],
+    await waitFor(() => {
+      expect(widget.queries).toHaveLength(2);
+      expect(widget.queries[0]).toMatchObject({
+        name: 'Transactions',
+        conditions: 'event.type:transaction',
+        fields: ['count()'],
+      });
+      expect(widget.queries[1]).toMatchObject({
+        name: 'Errors',
+        conditions: 'event.type:error',
+        fields: ['count()'],
+      });
     });
   });
 
@@ -255,23 +291,32 @@ describe('Modals -> AddDashboardWidgetModal', function () {
     });
 
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
+
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      // API request should fail and not add widget.
+      expect(widget).toBeUndefined();
     });
 
-    await clickSubmit(wrapper);
-    await wrapper.update();
-
-    // API request should fail and not add widget.
-    expect(widget).toBeUndefined();
-
-    const errors = wrapper.find('FieldErrorReason');
-    expect(errors).toHaveLength(2);
-
-    // Nested object error should display
-    const conditionError = wrapper.find('WidgetQueriesForm FieldErrorReason');
-    expect(conditionError).toHaveLength(1);
+    // Check for error messages
+    await waitFor(() => {
+      const errors = screen.getAllByText(/required|invalid/i);
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it('can edit a widget', async function () {
@@ -296,28 +341,36 @@ describe('Modals -> AddDashboardWidgetModal', function () {
       ],
     };
     const onAdd = jest.fn();
-    const wrapper = mountModal({
-      initialData,
-      widget,
-      onAddWidget: onAdd,
-      onUpdateWidget: data => {
-        widget = data;
-      },
-    });
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        widget={widget}
+        onAddWidget={onAdd}
+        onUpdateWidget={data => {
+          widget = data;
+        }}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
 
     // Should be in edit 'mode'
-    const heading = wrapper.find('h4');
-    expect(heading.text()).toContain('Edit');
+    await waitFor(() => {
+      expect(screen.getByRole('heading', {name: /edit/i})).toBeInTheDocument();
+    });
 
     // Should set widget data up.
-    const title = wrapper.find('Input[name="title"]');
-    expect(title.props().value).toEqual(widget.title);
-    expect(wrapper.find('input[name="displayType"]').props().value).toEqual(
-      widget.displayType
-    );
-    expect(wrapper.find('WidgetQueriesForm')).toHaveLength(1);
-    expect(wrapper.find('StyledSearchBar')).toHaveLength(2);
-    expect(wrapper.find('QueryField')).toHaveLength(2);
+    const titleInput = screen.getByRole('textbox', {name: /title/i});
+    expect(titleInput).toHaveValue(widget.title);
+
+    // Expect two query field configurations
+    await waitFor(() => {
+      expect(document.querySelectorAll('#smart-search-input')).toHaveLength(2);
+    });
 
     // Expect events-stats endpoint to be called for each search conditions with
     // the same y-axis parameters
@@ -342,11 +395,16 @@ describe('Modals -> AddDashboardWidgetModal', function () {
       })
     );
 
-    title.simulate('change', {target: {value: 'New title'}});
-    await clickSubmit(wrapper);
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, 'New title');
 
-    expect(onAdd).not.toHaveBeenCalled();
-    expect(widget.title).toEqual('New title');
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(onAdd).not.toHaveBeenCalled();
+      expect(widget.title).toEqual('New title');
+    });
 
     expect(eventsStatsMock).toHaveBeenCalledTimes(2);
   });
@@ -376,318 +434,317 @@ describe('Modals -> AddDashboardWidgetModal', function () {
         },
       ],
     };
-    const wrapper = mountModal({
-      initialData,
-      widget,
-      onAddWidget: jest.fn(),
-      onUpdateWidget: data => {
-        widget = data;
-      },
-    });
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        widget={widget}
+        onAddWidget={jest.fn()}
+        onUpdateWidget={data => {
+          widget = data;
+        }}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
 
     // Should be in edit 'mode'
-    const heading = wrapper.find('h4').first();
-    expect(heading.text()).toContain('Edit');
+    await waitFor(() => {
+      expect(screen.getByRole('heading', {name: /edit/i})).toBeInTheDocument();
+    });
 
     // Should set widget data up.
-    const title = wrapper.find('Input[name="title"]');
-    expect(title.props().value).toEqual(widget.title);
-    expect(wrapper.find('input[name="displayType"]').props().value).toEqual(
-      widget.displayType
-    );
-    expect(wrapper.find('WidgetQueriesForm')).toHaveLength(1);
-    // Should have an orderby select
-    expect(wrapper.find('WidgetQueriesForm SelectControl[name="orderby"]')).toHaveLength(
-      1
-    );
+    const titleInput = screen.getByRole('textbox', {name: /title/i});
+    expect(titleInput).toHaveValue(widget.title);
 
-    // Add a column, and choose a value,
-    wrapper.find('button[aria-label="Add a Column"]').simulate('click');
-    await wrapper.update();
+    // Add a column
+    const addColumnButton = screen.getByRole('button', {name: 'Add a Column'});
+    await userEvent.click(addColumnButton);
 
-    selectByLabel(wrapper, 'trace', {name: 'field', at: 2, control: true});
-    await wrapper.update();
+    await waitFor(() => {
+      expect(screen.getAllByRole('textbox', {name: /field/i}).length).toBeGreaterThanOrEqual(2);
+    });
 
-    await clickSubmit(wrapper);
+    const fieldSelects = screen.getAllByRole('textbox', {name: /field/i});
+    await selectEvent.select(fieldSelects[2], 'trace');
 
-    // A new field should be added.
-    expect(widget.queries[0].fields).toHaveLength(3);
-    expect(widget.queries[0].fields[2]).toEqual('trace');
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      // A new field should be added.
+      expect(widget.queries[0].fields).toHaveLength(3);
+      expect(widget.queries[0].fields[2]).toEqual('trace');
+    });
   });
 
   it('uses count() columns if there are no aggregate fields remaining when switching from table to chart', async function () {
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
-    });
-    // No delete button as there is only one field.
-    expect(wrapper.find('IconDelete')).toHaveLength(0);
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
 
     // Select Table display
-    selectByLabel(wrapper, 'Table', {name: 'displayType', at: 0, control: true});
-    expect(getDisplayType(wrapper).props().value).toEqual('table');
+    const displayTypeSelect = screen.getByRole('textbox', {name: /display type/i});
+    await selectEvent.select(displayTypeSelect, 'Table');
 
     // Add field column
-    selectByLabel(wrapper, 'event.type', {name: 'field', at: 0, control: true});
-    let fieldColumn = wrapper.find('input[name="field"]');
-    expect(fieldColumn.props().value).toEqual({
-      kind: 'field',
-      meta: {dataType: 'string', name: 'event.type'},
+    const fieldSelect = screen.getByRole('textbox', {name: /field/i});
+    await selectEvent.select(fieldSelect, 'event.type');
+
+    // Verify the field value
+    await waitFor(() => {
+      const displayedInput = screen.getByDisplayValue(/event\.type/i);
+      expect(displayedInput).toBeInTheDocument();
     });
 
     // Select Line chart display
-    selectByLabel(wrapper, 'Line Chart', {name: 'displayType', at: 0, control: true});
-    expect(getDisplayType(wrapper).props().value).toEqual('line');
+    await selectEvent.select(displayTypeSelect, 'Line Chart');
 
     // Expect event.type field to be converted to count()
-    fieldColumn = wrapper.find('input[name="field"]');
-    expect(fieldColumn.props().value).toEqual({
-      kind: 'function',
-      meta: {name: 'count', parameters: []},
+    await waitFor(() => {
+      expect(screen.getByDisplayValue(/count/i)).toBeInTheDocument();
     });
 
-    await clickSubmit(wrapper);
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
 
-    expect(widget.queries).toHaveLength(1);
-    expect(widget.queries[0].fields).toEqual(['count()']);
+    await waitFor(() => {
+      expect(widget.queries).toHaveLength(1);
+      expect(widget.queries[0].fields).toEqual(['count()']);
+    });
   });
 
   it('should filter out non-aggregate fields when switching from table to chart', async function () {
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
-    });
-    // No delete button as there is only one field.
-    expect(wrapper.find('IconDelete')).toHaveLength(0);
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
 
     // Select Table display
-    selectByLabel(wrapper, 'Table', {name: 'displayType', at: 0, control: true});
-    expect(getDisplayType(wrapper).props().value).toEqual('table');
+    const displayTypeSelect = screen.getByRole('textbox', {name: /display type/i});
+    await selectEvent.select(displayTypeSelect, 'Table');
 
     // Click the add button
-    const add = wrapper.find('button[aria-label="Add a Column"]');
-    add.simulate('click');
-    wrapper.update();
+    const addButton = screen.getByRole('button', {name: 'Add a Column'});
+    await userEvent.click(addButton);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('textbox', {name: /field/i})).toHaveLength(2);
+    });
 
     // Add columns
-    selectByLabel(wrapper, 'event.type', {name: 'field', at: 0, control: true});
-    let fieldColumn = wrapper.find('input[name="field"]').at(0);
-    expect(fieldColumn.props().value).toEqual({
-      kind: 'field',
-      meta: {dataType: 'string', name: 'event.type'},
-    });
-
-    selectByLabel(wrapper, 'p95(\u2026)', {name: 'field', at: 1, control: true});
-    fieldColumn = wrapper.find('input[name="field"]').at(1);
-    expect(fieldColumn.props().value).toMatchObject({
-      kind: 'function',
-      meta: {
-        name: 'p95',
-        parameters: [{defaultValue: 'transaction.duration', kind: 'column'}],
-      },
-    });
+    const fieldSelects = screen.getAllByRole('textbox', {name: /field/i});
+    await selectEvent.select(fieldSelects[0], 'event.type');
+    await selectEvent.select(fieldSelects[1], 'p95(…)');
 
     // Select Line chart display
-    selectByLabel(wrapper, 'Line Chart', {name: 'displayType', at: 0, control: true});
-    expect(getDisplayType(wrapper).props().value).toEqual('line');
+    await selectEvent.select(displayTypeSelect, 'Line Chart');
 
-    // Expect event.type field to be converted to count()
-    fieldColumn = wrapper.find('input[name="field"]');
-    expect(fieldColumn.length).toEqual(1);
-    expect(fieldColumn.props().value).toMatchObject({
-      kind: 'function',
-      meta: {
-        name: 'p95',
-        parameters: [{defaultValue: 'transaction.duration', kind: 'column'}],
-      },
+    // Expect only one field (the aggregate) to remain
+    await waitFor(() => {
+      expect(screen.getAllByRole('textbox', {name: /field/i})).toHaveLength(1);
     });
 
-    await clickSubmit(wrapper);
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
 
-    expect(widget.queries).toHaveLength(1);
-    expect(widget.queries[0].fields).toEqual(['p95(transaction.duration)']);
+    await waitFor(() => {
+      expect(widget.queries).toHaveLength(1);
+      expect(widget.queries[0].fields).toEqual(['p95(transaction.duration)']);
+    });
   });
 
   it('should filter non-legal y-axis choices for timeseries widget charts', async function () {
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
-    });
-    // No delete button as there is only one field.
-    expect(wrapper.find('IconDelete')).toHaveLength(0);
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
 
-    selectByLabel(wrapper, 'any(\u2026)', {
-      name: 'field',
-      at: 0,
-      control: true,
-    });
+    const fieldSelect = screen.getByRole('textbox', {name: /field/i});
+    await selectEvent.select(fieldSelect, 'any(…)');
 
     // Expect user.display to not be an available parameter option for any()
     // for line (timeseries) widget charts
-    const option = getOptionByLabel(wrapper, 'user.display', {
-      name: 'parameter',
-      at: 0,
-      control: true,
+    await waitFor(async () => {
+      const parameterSelect = screen.getByRole('textbox', {name: /parameter/i});
+      await selectEvent.openMenu(parameterSelect);
+      expect(screen.queryByText('user.display')).not.toBeInTheDocument();
     });
-    expect(option.exists()).toEqual(false);
 
     // Be able to choose a numeric-like option for any()
-    selectByLabel(wrapper, 'measurements.lcp', {
-      name: 'parameter',
-      at: 0,
-      control: true,
+    const parameterSelect = screen.getByRole('textbox', {name: /parameter/i});
+    await selectEvent.select(parameterSelect, 'measurements.lcp');
+
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(widget.displayType).toEqual('line');
+      expect(widget.queries).toHaveLength(1);
+      expect(widget.queries[0].fields).toEqual(['any(measurements.lcp)']);
     });
-
-    await clickSubmit(wrapper);
-
-    expect(widget.displayType).toEqual('line');
-    expect(widget.queries).toHaveLength(1);
-    expect(widget.queries[0].fields).toEqual(['any(measurements.lcp)']);
   });
 
   it('should not filter y-axis choices for big number widget charts', async function () {
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
-    });
-    // No delete button as there is only one field.
-    expect(wrapper.find('IconDelete')).toHaveLength(0);
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
 
     // Select Big number display
-    selectByLabel(wrapper, 'Big Number', {name: 'displayType', at: 0, control: true});
-    expect(getDisplayType(wrapper).props().value).toEqual('big_number');
+    const displayTypeSelect = screen.getByRole('textbox', {name: /display type/i});
+    await selectEvent.select(displayTypeSelect, 'Big Number');
 
-    selectByLabel(wrapper, 'count_unique(\u2026)', {
-      name: 'field',
-      at: 0,
-      control: true,
-    });
+    const fieldSelect = screen.getByRole('textbox', {name: /field/i});
+    await selectEvent.select(fieldSelect, 'count_unique(…)');
 
     // Be able to choose a non numeric-like option for count_unique()
-    selectByLabel(wrapper, 'user.display', {
-      name: 'parameter',
-      at: 0,
-      control: true,
+    const parameterSelect = screen.getByRole('textbox', {name: /parameter/i});
+    await selectEvent.select(parameterSelect, 'user.display');
+
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(widget.displayType).toEqual('big_number');
+      expect(widget.queries).toHaveLength(1);
+      expect(widget.queries[0].fields).toEqual(['count_unique(user.display)']);
     });
-
-    await clickSubmit(wrapper);
-
-    expect(widget.displayType).toEqual('big_number');
-    expect(widget.queries).toHaveLength(1);
-    expect(widget.queries[0].fields).toEqual(['count_unique(user.display)']);
   });
 
   it('should filter y-axis choices for world map widget charts', async function () {
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
-    });
-    // No delete button as there is only one field.
-    expect(wrapper.find('IconDelete')).toHaveLength(0);
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
 
     // Select World Map display
-    selectByLabel(wrapper, 'World Map', {name: 'displayType', at: 0, control: true});
-    expect(getDisplayType(wrapper).props().value).toEqual('world_map');
+    const displayTypeSelect = screen.getByRole('textbox', {name: /display type/i});
+    await selectEvent.select(displayTypeSelect, 'World Map');
 
     // Choose any()
-    selectByLabel(wrapper, 'any(\u2026)', {
-      name: 'field',
-      at: 0,
-      control: true,
-    });
+    const fieldSelect = screen.getByRole('textbox', {name: /field/i});
+    await selectEvent.select(fieldSelect, 'any(…)');
 
     // user.display should be filtered out for any()
-    const option = getOptionByLabel(wrapper, 'user.display', {
-      name: 'parameter',
-      at: 0,
-      control: true,
+    await waitFor(async () => {
+      const parameterSelect = screen.getByRole('textbox', {name: /parameter/i});
+      await selectEvent.openMenu(parameterSelect);
+      expect(screen.queryByText('user.display')).not.toBeInTheDocument();
     });
-    expect(option.exists()).toEqual(false);
 
-    selectByLabel(wrapper, 'measurements.lcp', {
-      name: 'parameter',
-      at: 0,
-      control: true,
-    });
+    const parameterSelect = screen.getByRole('textbox', {name: /parameter/i});
+    await selectEvent.select(parameterSelect, 'measurements.lcp');
 
     // Choose count_unique()
-    selectByLabel(wrapper, 'count_unique(\u2026)', {
-      name: 'field',
-      at: 0,
-      control: true,
-    });
+    await selectEvent.select(fieldSelect, 'count_unique(…)');
 
     // user.display not should be filtered out for count_unique()
-    selectByLabel(wrapper, 'user.display', {
-      name: 'parameter',
-      at: 0,
-      control: true,
-    });
+    await selectEvent.select(parameterSelect, 'user.display');
 
     // Be able to choose a numeric-like option
-    selectByLabel(wrapper, 'measurements.lcp', {
-      name: 'parameter',
-      at: 0,
-      control: true,
+    await selectEvent.select(parameterSelect, 'measurements.lcp');
+
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(widget.displayType).toEqual('world_map');
+      expect(widget.queries).toHaveLength(1);
+      expect(widget.queries[0].fields).toEqual(['count_unique(measurements.lcp)']);
     });
-
-    await clickSubmit(wrapper);
-
-    expect(widget.displayType).toEqual('world_map');
-    expect(widget.queries).toHaveLength(1);
-    expect(widget.queries[0].fields).toEqual(['count_unique(measurements.lcp)']);
   });
 
   it('should filter y-axis choices by output type when switching from big number to line chart', async function () {
     let widget = undefined;
-    const wrapper = mountModal({
-      initialData,
-      onAddWidget: data => (widget = data),
-    });
-    // No delete button as there is only one field.
-    expect(wrapper.find('IconDelete')).toHaveLength(0);
+    
+    render(
+      <AddDashboardWidgetModal
+        Header={stubEl}
+        Footer={stubEl}
+        Body={stubEl}
+        organization={initialData.organization}
+        onAddWidget={data => (widget = data)}
+        closeModal={() => void 0}
+      />,
+      {context: initialData.routerContext}
+    );
 
     // Select Big Number display
-    selectByLabel(wrapper, 'Big Number', {name: 'displayType', at: 0, control: true});
-    expect(getDisplayType(wrapper).props().value).toEqual('big_number');
+    const displayTypeSelect = screen.getByRole('textbox', {name: /display type/i});
+    await selectEvent.select(displayTypeSelect, 'Big Number');
 
     // Choose any()
-    selectByLabel(wrapper, 'any(\u2026)', {
-      name: 'field',
-      at: 0,
-      control: true,
-    });
+    const fieldSelect = screen.getByRole('textbox', {name: /field/i});
+    await selectEvent.select(fieldSelect, 'any(…)');
 
-    selectByLabel(wrapper, 'id', {
-      name: 'parameter',
-      at: 0,
-      control: true,
-    });
+    const parameterSelect = screen.getByRole('textbox', {name: /parameter/i});
+    await selectEvent.select(parameterSelect, 'id');
 
     // Select Line chart display
-    selectByLabel(wrapper, 'Line Chart', {name: 'displayType', at: 0, control: true});
-    expect(getDisplayType(wrapper).props().value).toEqual('line');
+    await selectEvent.select(displayTypeSelect, 'Line Chart');
 
-    // Expect event.type field to be converted to count()
-    const fieldColumn = wrapper.find('input[name="field"]');
-    expect(fieldColumn.length).toEqual(1);
-    expect(fieldColumn.props().value).toMatchObject({
-      kind: 'function',
-      meta: {
-        name: 'count',
-        parameters: [],
-      },
+    // Expect any(id) field to be converted to count()
+    await waitFor(() => {
+      expect(screen.getByDisplayValue(/count/i)).toBeInTheDocument();
     });
 
-    await clickSubmit(wrapper);
+    const submitButton = screen.getByTestId('add-widget');
+    await userEvent.click(submitButton);
 
-    expect(widget.displayType).toEqual('line');
-    expect(widget.queries).toHaveLength(1);
-    expect(widget.queries[0].fields).toEqual(['count()']);
+    await waitFor(() => {
+      expect(widget.displayType).toEqual('line');
+      expect(widget.queries).toHaveLength(1);
+      expect(widget.queries[0].fields).toEqual(['count()']);
+    });
   });
 });

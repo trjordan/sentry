@@ -12,6 +12,7 @@ import GuideActions from 'app/actions/guideActions';
 import GuideAnchorWrapper, {GuideAnchor} from 'app/components/assistant/guideAnchor';
 import ConfigStore from 'app/stores/configStore';
 import GuideStore from 'app/stores/guideStore';
+import theme from 'app/utils/theme';
 
 describe('GuideAnchor', function () {
   const serverGuide = [
@@ -42,16 +43,17 @@ describe('GuideAnchor', function () {
   });
 
   it('renders, advances, and finishes', async function () {
+    // Render two separate anchors like the original test which had wrapper and wrapper2
+    // Important: Render them together so both anchors are registered before guides load
     renderWithTheme(
       <div>
         <GuideAnchor target="issue_title" />
         <GuideAnchor target="exception" />
-        <GuideAnchor target="breadcrumbs" />
       </div>
     );
 
     // Call fetchSucceeded with the guide data
-    act(() => {
+    await act(async () => {
       GuideActions.fetchSucceeded(serverGuide);
     });
 
@@ -60,26 +62,33 @@ describe('GuideAnchor', function () {
       expect(screen.getByText("Let's Get This Over With")).toBeInTheDocument();
     });
 
-    // Verify first guide step is shown (step 1: issue_title)
+    // Verify first guide step is shown (step 0: issue_title)
     expect(screen.getByText("Let's Get This Over With")).toBeInTheDocument();
+    
+    // Check that Hovercard exists by looking for the guide title
+    const guideTitle = screen.getByText("Let's Get This Over With");
+    expect(guideTitle).toBeInTheDocument();
+    
+    // Verify hovercard has the correct background color (purple300)
+    // Find the container with the GuideContainer class
+    const guideContainer = guideTitle.closest('[class*="GuideContainer"]');
+    expect(guideContainer).toHaveStyle(`background-color: ${theme.purple300}`);
 
-    // Clicking on next should advance to the next step, skipping straight to the last step.
-    // The guide's steps are filtered to only those with anchors registered.
-    // Steps with targets: issue_title (step 0), exception (step 6), breadcrumbs (step 7)
-    // After filtering, we have 3 steps: [issue_title, exception, breadcrumbs]
-    // But clicking Next seems to skip to the last step (breadcrumbs)
-    act(() => {
-      fireEvent.click(screen.getByRole('button', {name: 'Next'}));
+    // Clicking on next should deactivate the current card and activate the next one.
+    // In original test: wrapper.find('StyledButton[aria-label="Next"]').simulate('click');
+    await act(async () => {
+      const nextButton = screen.getByRole('button', {name: 'Next'});
+      fireEvent.click(nextButton);
     });
 
+    // Wait for the second step to appear
+    // The guide has been filtered to only 2 steps since we only have 2 anchors registered
     await waitFor(() => {
-      expect(screen.queryByText("Let's Get This Over With")).not.toBeInTheDocument();
+      expect(screen.getByText('Narrow Down Suspects')).toBeInTheDocument();
     });
-
-    // It appears to jump to 'Retrace Your Steps' instead of 'Narrow Down Suspects'
-    await waitFor(() => {
-      expect(screen.getByText('Retrace Your Steps')).toBeInTheDocument();
-    });
+    
+    // Check that Hovercard still exists on second step
+    expect(screen.getByText('Narrow Down Suspects')).toBeInTheDocument();
 
     // Clicking on the button in the last step should finish the guide.
     const finishMock = MockApiClient.addMockResponse({
@@ -87,7 +96,11 @@ describe('GuideAnchor', function () {
       url: '/assistant/',
     });
 
-    fireEvent.click(screen.getByRole('button', {name: 'Enough Already'}));
+    // The last step button should say "Enough Already" or "Got It" depending on number of steps
+    // Since we have 2 steps (filtered), it should say "Enough Already"
+    // Find and click that button
+    const finishButton = screen.getByRole('button', {name: 'Enough Already'});
+    fireEvent.click(finishButton);
 
     expect(finishMock).toHaveBeenCalledWith(
       '/assistant/',
@@ -109,7 +122,7 @@ describe('GuideAnchor', function () {
       </div>
     );
 
-    act(() => {
+    await act(async () => {
       GuideActions.fetchSucceeded(serverGuide);
     });
 
@@ -122,7 +135,7 @@ describe('GuideAnchor', function () {
       url: '/assistant/',
     });
 
-    act(() => {
+    await act(async () => {
       fireEvent.click(screen.getByRole('button', {name: 'Dismiss'}));
     });
 
@@ -137,13 +150,19 @@ describe('GuideAnchor', function () {
       })
     );
 
+    // Verify that the guide is no longer active after dismissing
     await waitFor(() => {
       expect(screen.queryByText("Let's Get This Over With")).not.toBeInTheDocument();
+    });
+    
+    // Verify that no guide is active in the store
+    await waitFor(() => {
+      expect(GuideStore.state.currentGuide).toBe(null);
     });
   });
 
   it('renders no container when inactive', function () {
-    const {container} = renderWithTheme(
+    renderWithTheme(
       <GuideAnchor target="target 1">
         <span>A child</span>
       </GuideAnchor>
@@ -151,21 +170,37 @@ describe('GuideAnchor', function () {
 
     // Should render child without hovercard when inactive
     expect(screen.getByText('A child')).toBeInTheDocument();
-    expect(container.querySelector('span')).toBeInTheDocument();
+    
+    // Verify no hovercard is present by checking for guide-specific content
+    expect(screen.queryByText("Let's Get This Over With")).not.toBeInTheDocument();
+    
+    // Verify that the guide store shows no active guide
+    expect(GuideStore.state.currentGuide).toBe(null);
   });
 
-  it('renders children when disabled', function () {
-    const {container} = renderWithTheme(
+  it('renders children when disabled', async function () {
+    renderWithTheme(
       <GuideAnchorWrapper disabled target="exception">
         <div data-test-id="child-div" />
       </GuideAnchorWrapper>
     );
 
     // Should render child immediately without waiting
-    expect(container.querySelector('[data-test-id="child-div"]')).toBeInTheDocument();
+    expect(screen.getByTestId('child-div')).toBeInTheDocument();
 
     // Even if we fetch guides, disabled wrapper won't show guide
-    GuideActions.fetchSucceeded(serverGuide);
+    act(() => {
+      GuideActions.fetchSucceeded(serverGuide);
+    });
+    
+    // Wait a bit to ensure the guide doesn't appear
+    await waitFor(() => {
+      // Check that no guide text appears
+      expect(screen.queryByText("Let's Get This Over With")).not.toBeInTheDocument();
+    });
+    
+    // Verify the child is still there and no hovercard appeared
+    expect(screen.getByTestId('child-div')).toBeInTheDocument();
     expect(screen.queryByText('Narrow Down Suspects')).not.toBeInTheDocument();
   });
 });

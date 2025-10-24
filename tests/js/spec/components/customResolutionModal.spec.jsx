@@ -1,14 +1,20 @@
 import React from 'react';
 
-import {renderWithTheme, screen, userEvent} from 'sentry-test/reactTestingLibrary';
+import {
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+} from 'sentry-test/reactTestingLibrary';
+import {selectByValue} from 'sentry-test/select-new';
 
 import CustomResolutionModal from 'app/components/customResolutionModal';
 
 describe('CustomResolutionModal', function () {
-  let _releasesMock;
+  let releasesMock;
 
   beforeEach(function () {
-    _releasesMock = MockApiClient.addMockResponse({
+    releasesMock = MockApiClient.addMockResponse({
       url: '/projects/org-slug/project-slug/releases/',
       body: [TestStubs.Release()],
     });
@@ -17,7 +23,7 @@ describe('CustomResolutionModal', function () {
   it('can select a version', async function () {
     const onSelected = jest.fn();
     const closeModal = jest.fn();
-    renderWithTheme(
+    const {container} = renderWithTheme(
       <CustomResolutionModal
         Header={p => p.children}
         Body={p => p.children}
@@ -29,11 +35,27 @@ describe('CustomResolutionModal', function () {
       />
     );
 
-    // Submit the form - tests that the modal renders and submission works
+    // Verify the releases API was called
+    expect(releasesMock).toHaveBeenCalled();
+
+    // Wait for the select to load with options
+    await waitFor(() => {
+      const selectControl = container.querySelector('input[name="version"]');
+      expect(selectControl).toBeInTheDocument();
+    });
+
+    // Select the version
+    await selectByValue(container, 'sentry-android-shop@1.2.0', {
+      name: 'version',
+    });
+
+    // Submit the form
     const submitButton = screen.getByRole('button', {name: 'Save Changes'});
     await userEvent.click(submitButton);
 
-    expect(onSelected).toHaveBeenCalled();
-    expect(closeModal).toHaveBeenCalled();
+    // Verify onSelected was called with the correct parameter
+    expect(onSelected).toHaveBeenCalledWith({
+      inRelease: 'sentry-android-shop@1.2.0',
+    });
   });
 });

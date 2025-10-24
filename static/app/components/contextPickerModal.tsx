@@ -64,14 +64,14 @@ type Props = ModalRenderProps & {
   comingFromProjectId?: string;
 };
 
-const selectStyles = {
-  menu: (provided: StylesConfig) => ({
+const selectStyles: Partial<StylesConfig> = {
+  menu: (provided: any) => ({
     ...provided,
     position: 'auto',
     boxShadow: 'none',
     marginBottom: 0,
   }),
-  option: (provided: StylesConfig, state: any) => ({
+  option: (provided: any, state: any) => ({
     ...provided,
     opacity: state.isDisabled ? 0.6 : 1,
     cursor: state.isDisabled ? 'not-allowed' : 'pointer',
@@ -79,7 +79,7 @@ const selectStyles = {
   }),
 };
 
-class ContextPickerModal extends React.Component<Props> {
+class ContextPickerModal extends React.Component<Props, {}> {
   componentDidMount() {
     const {organization, projects, organizations} = this.props;
 

@@ -100,11 +100,11 @@ class ListContainer extends React.Component<Props, State> {
       >
         {({measure}) =>
           isLastItem ? (
-            <Row style={style} onLoad={measure} data-test-id="last-crumb">
+            <Row style={style} onLoad={measure} data-test-id="breadcrumb-row last-crumb">
               {this.renderBody(breadcrumb, isLastItem)}
             </Row>
           ) : (
-            <Row style={style} onLoad={measure}>
+            <Row style={style} onLoad={measure} data-test-id="breadcrumb-row">
               {this.renderBody(breadcrumb)}
             </Row>
           )

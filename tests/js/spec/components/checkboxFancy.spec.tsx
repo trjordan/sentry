@@ -14,6 +14,8 @@ describe('CheckboxFancy', function () {
 
   it('isChecked', function () {
     const {container} = renderWithTheme(<CheckboxFancy isChecked />);
+    const checkbox = container.querySelector('[data-test-id="checkbox-fancy"]');
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
     expect(
       container.querySelector('[data-test-id="icon-check-mark"]')
     ).toBeInTheDocument();
@@ -24,6 +26,8 @@ describe('CheckboxFancy', function () {
 
   it('isIndeterminate', function () {
     const {container} = renderWithTheme(<CheckboxFancy isIndeterminate />);
+    const checkbox = container.querySelector('[data-test-id="checkbox-fancy"]');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
     expect(
       container.querySelector('[data-test-id="icon-check-mark"]')
     ).not.toBeInTheDocument();
@@ -32,6 +36,8 @@ describe('CheckboxFancy', function () {
 
   it('isDisabled', function () {
     const {container} = renderWithTheme(<CheckboxFancy isDisabled />);
+    const checkbox = container.querySelector('[data-test-id="checkbox-fancy"]');
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true');
     expect(
       container.querySelector('[data-test-id="icon-check-mark"]')
     ).not.toBeInTheDocument();

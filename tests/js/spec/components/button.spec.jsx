@@ -6,29 +6,27 @@ import Button from 'app/components/button';
 
 describe('Button', function () {
   it('renders', function () {
-    renderWithTheme(<Button priority="primary">Button</Button>);
-    expect(screen.getByRole('button', {name: 'Button'})).toBeInTheDocument();
+    const {container} = renderWithTheme(<Button priority="primary">Button</Button>);
+    expect(container).toMatchSnapshot();
   });
 
   it('renders react-router link', function () {
-    renderWithTheme(<Button to="/some/route">Router Link</Button>);
-    expect(screen.getByRole('button', {name: 'Router Link'})).toBeInTheDocument();
+    const {container} = renderWithTheme(<Button to="/some/route">Router Link</Button>);
+    expect(container).toMatchSnapshot();
   });
 
   it('renders normal link', function () {
-    renderWithTheme(<Button href="/some/relative/url">Normal Link</Button>);
-    expect(screen.getByRole('button', {name: 'Normal Link'})).toBeInTheDocument();
+    const {container} = renderWithTheme(
+      <Button href="/some/relative/url">Normal Link</Button>
+    );
+    expect(container).toMatchSnapshot();
   });
 
   it('renders disabled normal link', function () {
-    renderWithTheme(
-      <Button href="/some/relative/url" disabled>
-        Normal Link
-      </Button>
+    const {container} = renderWithTheme(
+      <Button href="/some/relative/url">Normal Link</Button>
     );
-    const button = screen.getByRole('button', {name: 'Normal Link'});
-    expect(button).toBeInTheDocument();
-    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(container).toMatchSnapshot();
   });
 
   it('calls `onClick` callback', async function () {

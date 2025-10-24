@@ -12,10 +12,8 @@ describe('User', function () {
       name: FILTER_MASK,
     };
 
-    const {container, getByText, unmount} = renderWithTheme(<User data={user1} />);
-    expect(
-      container.querySelector('[data-test-id="user-context-name-value"]')
-    ).toHaveTextContent(FILTER_MASK);
+    const {getByTestId, getByText, unmount} = renderWithTheme(<User data={user1} />);
+    expect(getByTestId('user-context-name-value')).toHaveTextContent(FILTER_MASK);
     expect(getByText('?')).toBeInTheDocument();
     unmount();
 
@@ -25,13 +23,11 @@ describe('User', function () {
     };
 
     const {
-      container: container2,
+      getByTestId: getByTestId2,
       getByText: getByText2,
       unmount: unmount2,
     } = renderWithTheme(<User data={user2} />);
-    expect(
-      container2.querySelector('[data-test-id="user-context-email-value"]')
-    ).toHaveTextContent(FILTER_MASK);
+    expect(getByTestId2('user-context-email-value')).toHaveTextContent(FILTER_MASK);
     expect(getByText2('?')).toBeInTheDocument();
     unmount2();
 
@@ -40,12 +36,10 @@ describe('User', function () {
       username: FILTER_MASK,
     };
 
-    const {container: container3, getByText: getByText3} = renderWithTheme(
+    const {getByTestId: getByTestId3, getByText: getByText3} = renderWithTheme(
       <User data={user3} />
     );
-    expect(
-      container3.querySelector('[data-test-id="user-context-username-value"]')
-    ).toHaveTextContent(FILTER_MASK);
+    expect(getByTestId3('user-context-username-value')).toHaveTextContent(FILTER_MASK);
     expect(getByText3('?')).toBeInTheDocument();
   });
 });

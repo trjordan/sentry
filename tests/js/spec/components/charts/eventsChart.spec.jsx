@@ -79,6 +79,14 @@ describe('EventsChart', function () {
   });
 
   it('re-renders if period from props changes', function () {
+    // Create a spy on ChartZoom's render to track re-renders
+    const renderSpy = jest.fn();
+    const originalRender = ChartZoom.prototype.render;
+    ChartZoom.prototype.render = function (...args) {
+      renderSpy();
+      return originalRender.apply(this, args);
+    };
+
     const {rerender} = renderWithTheme(
       <EventsChart
         api={new MockApiClient()}
@@ -93,6 +101,9 @@ describe('EventsChart', function () {
         router={router}
       />
     );
+
+    // Clear the spy after initial render
+    renderSpy.mockClear();
 
     rerender(
       <EventsChart
@@ -109,11 +120,21 @@ describe('EventsChart', function () {
       />
     );
 
-    // Component should re-render without errors
-    expect(globalSelection.updateDateTime).not.toHaveBeenCalled();
+    expect(renderSpy).toHaveBeenCalledTimes(1);
+
+    // Restore original render
+    ChartZoom.prototype.render = originalRender;
   });
 
   it('re-renders if query from props changes', function () {
+    // Create a spy on ChartZoom's render to track re-renders
+    const renderSpy = jest.fn();
+    const originalRender = ChartZoom.prototype.render;
+    ChartZoom.prototype.render = function (...args) {
+      renderSpy();
+      return originalRender.apply(this, args);
+    };
+
     const {rerender} = renderWithTheme(
       <EventsChart
         api={new MockApiClient()}
@@ -128,6 +149,9 @@ describe('EventsChart', function () {
         router={router}
       />
     );
+
+    // Clear the spy after initial render
+    renderSpy.mockClear();
 
     rerender(
       <EventsChart
@@ -145,11 +169,21 @@ describe('EventsChart', function () {
       />
     );
 
-    // Component should re-render without errors
-    expect(globalSelection.updateDateTime).not.toHaveBeenCalled();
+    expect(renderSpy).toHaveBeenCalledTimes(1);
+
+    // Restore original render
+    ChartZoom.prototype.render = originalRender;
   });
 
   it('re-renders if project from props changes', function () {
+    // Create a spy on ChartZoom's render to track re-renders
+    const renderSpy = jest.fn();
+    const originalRender = ChartZoom.prototype.render;
+    ChartZoom.prototype.render = function (...args) {
+      renderSpy();
+      return originalRender.apply(this, args);
+    };
+
     const {rerender} = renderWithTheme(
       <EventsChart
         api={new MockApiClient()}
@@ -164,6 +198,9 @@ describe('EventsChart', function () {
         router={router}
       />
     );
+
+    // Clear the spy after initial render
+    renderSpy.mockClear();
 
     rerender(
       <EventsChart
@@ -180,8 +217,10 @@ describe('EventsChart', function () {
       />
     );
 
-    // Component should re-render without errors
-    expect(globalSelection.updateDateTime).not.toHaveBeenCalled();
+    expect(renderSpy).toHaveBeenCalledTimes(1);
+
+    // Restore original render
+    ChartZoom.prototype.render = originalRender;
   });
 
   it('has correct history entries when zooming', function () {

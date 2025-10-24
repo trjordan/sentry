@@ -8,7 +8,7 @@ import {BreadcrumbLevelType, BreadcrumbType} from 'app/types/breadcrumbs';
 describe('HttpRenderer', () => {
   describe('render', () => {
     it('should work', () => {
-      const {container} = render(
+      const {getByTestId, getByText} = render(
         <HttpRenderer
           searchTerm=""
           breadcrumb={{
@@ -25,25 +25,19 @@ describe('HttpRenderer', () => {
       );
 
       // Check for the method (POST)
-      const methodElement = container.querySelector('strong');
-      expect(methodElement).toHaveTextContent('POST');
+      expect(getByText('POST')).toBeInTheDocument();
 
       // Check for the URL link
-      const linkElement = container.querySelector(
-        'a[data-test-id="http-renderer-external-link"]'
-      );
+      const linkElement = getByTestId('http-renderer-external-link');
       expect(linkElement).toHaveTextContent('http://example.com/foo');
       expect(linkElement).toHaveAttribute('href', 'http://example.com/foo');
 
       // Check for the status code
-      const statusCodeElement = container.querySelector(
-        '[data-test-id="http-renderer-status-code"]'
-      );
-      expect(statusCodeElement).toHaveTextContent('[0]');
+      expect(getByTestId('http-renderer-status-code')).toHaveTextContent('[0]');
     });
 
     it("shouldn't blow up if crumb.data is missing", () => {
-      const {container} = render(
+      const {queryByTestId, queryByRole} = render(
         <HttpRenderer
           searchTerm=""
           breadcrumb={{
@@ -55,19 +49,13 @@ describe('HttpRenderer', () => {
       );
 
       // Should render without crashing but with no content
-      const strongElement = container.querySelector('strong');
-      expect(strongElement).not.toBeInTheDocument();
-
-      expect(
-        container.querySelector('[data-test-id="http-renderer-external-link"]')
-      ).not.toBeInTheDocument();
-      expect(
-        container.querySelector('[data-test-id="http-renderer-status-code"]')
-      ).not.toBeInTheDocument();
+      expect(queryByRole('link')).not.toBeInTheDocument();
+      expect(queryByTestId('http-renderer-external-link')).not.toBeInTheDocument();
+      expect(queryByTestId('http-renderer-status-code')).not.toBeInTheDocument();
     });
 
     it("shouldn't blow up if url is not a string", () => {
-      const {container} = render(
+      const {queryByTestId, getByText} = render(
         <HttpRenderer
           searchTerm=""
           breadcrumb={{
@@ -82,15 +70,10 @@ describe('HttpRenderer', () => {
       );
 
       // Should render method but no URL or status code
-      const methodElement = container.querySelector('strong');
-      expect(methodElement).toHaveTextContent('GET');
+      expect(getByText('GET')).toBeInTheDocument();
 
-      expect(
-        container.querySelector('[data-test-id="http-renderer-external-link"]')
-      ).not.toBeInTheDocument();
-      expect(
-        container.querySelector('[data-test-id="http-renderer-status-code"]')
-      ).not.toBeInTheDocument();
+      expect(queryByTestId('http-renderer-external-link')).not.toBeInTheDocument();
+      expect(queryByTestId('http-renderer-status-code')).not.toBeInTheDocument();
     });
   });
 });

@@ -1,6 +1,7 @@
 import React from 'react';
 
 import {
+  act,
   changeReactMentionsInput,
   fireEvent,
   renderWithTheme,
@@ -36,14 +37,18 @@ describe('NoteInputWithStorage', function () {
     expect(screen.getByRole('textbox')).toHaveValue('saved item');
   });
 
-  it('saves draft when input changes', function () {
+  it('saves draft when input changes', async function () {
     jest.useFakeTimers();
     renderWithTheme(<NoteInputWithStorage {...defaultProps} />);
 
-    changeReactMentionsInput('WIP COMMENT');
+    await act(async () => {
+      changeReactMentionsInput('WIP COMMENT');
+    });
 
     // Advance timers to trigger the debounced save (150ms debounce)
-    jest.advanceTimersByTime(150);
+    await act(async () => {
+      jest.runAllTimers();
+    });
 
     expect(localStorage.setItem).toHaveBeenCalledWith(
       'storage',

@@ -8,7 +8,7 @@ import BaseChart from 'app/components/charts/baseChart';
 import EventsChart from 'app/components/charts/eventsChart';
 
 jest.mock('app/components/charts/baseChart', () => {
-  return jest.fn().mockImplementation(() => <div data-testid="area-chart" />);
+  return jest.fn().mockImplementation(() => <div data-test-id="area-chart" />);
 });
 
 describe('EventsChart with legend', function () {
@@ -37,7 +37,7 @@ describe('EventsChart with legend', function () {
     });
   });
 
-  it('renders a legend if enabled', function () {
+  it('renders a legend if enabled', async function () {
     renderWithTheme(
       <EventsChart
         api={new MockApiClient()}
@@ -57,9 +57,8 @@ describe('EventsChart with legend', function () {
     );
 
     // Wait for tick to allow the mock API to resolve and component to render
-    return tick().then(() => {
-      expect(screen.getByTestId('area-chart')).toBeInTheDocument();
-      expect(BaseChart.mock.calls[0][0].legend).toHaveProperty('data');
-    });
+    await tick();
+    expect(screen.getByTestId('area-chart')).toBeInTheDocument();
+    expect(BaseChart.mock.calls[0][0].legend).toHaveProperty('data');
   });
 });

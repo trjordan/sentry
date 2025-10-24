@@ -137,43 +137,44 @@ export async function selectByQuery(selectName, query) {
  * @param {string} options.name - Accessible name if multiple textareas exist
  */
 export function changeReactMentionsInput(value, options = {}) {
-  const textarea = options.name
+  // Need to do this because of how react-mentions works,
+  // checks that event object is === document.activeElement
+  let el = options.name
     ? screen.getByRole('textbox', {name: options.name})
     : screen.getByRole('textbox');
 
-  // Focus the element (react-mentions checks document.activeElement)
-  textarea.focus();
+  // Focus the element to make it the activeElement
+  // react-mentions checks if document.activeElement === ev.target
+  el.focus();
 
-  // Set up selection (react-mentions requires non-zero width selection)
-  const currentValue = textarea.value || '';
-  if (currentValue.length >= 3) {
-    textarea.selectionStart = 2;
-    textarea.selectionEnd = 3;
-  } else {
-    textarea.selectionStart = 0;
-    textarea.selectionEnd = Math.min(1, currentValue.length);
-  }
+  // We need to simulate a selection change first so react-mentions
+  // internal state tracks the selection properly
+  // Select positions 2-3 like the original Enzyme version
+  el.selectionStart = 2;
+  el.selectionEnd = 3;
+  
+  // Wrap state updates in act to ensure they complete
+  act(() => {
+    // Trigger select to update react-mentions internal selection state
+    fireEvent.select(el, {target: el});
+  });
 
-  // Trigger select event
-  fireEvent.select(textarea, {target: textarea});
-
-  // Get a fresh reference
-  const el = options.name
+  // Query again to ensure we have fresh reference
+  el = options.name
     ? screen.getByRole('textbox', {name: options.name})
     : screen.getByRole('textbox');
-
-  // Use the native property setter to bypass React's tracking
-  const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-    window.HTMLTextAreaElement.prototype,
-    'value'
-  ).set;
-  nativeInputValueSetter.call(el, value);
+  
+  // Directly set value
+  el.value = value;
   el.selectionEnd = value.length;
-
-  // The events themselves will read from el.value (which we just set)
-  // So we trigger events with the element directly
-  fireEvent.input(el);
-  fireEvent.change(el);
+  
+  // Wrap change event in act to ensure state updates complete
+  act(() => {
+    // Trigger change event - react-mentions uses this
+    // The change handler will look at selectionStartBefore/selectionEndBefore from state
+    // and selectionEndAfter from the event
+    fireEvent.change(el, {target: el});
+  });
 }
 
 // Re-export RTL utilities for convenience

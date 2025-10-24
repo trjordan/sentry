@@ -7,6 +7,6 @@ import CircleIndicator from 'app/components/circleIndicator';
 describe('CircleIndicator', function () {
   it('renders', function () {
     const {container} = renderWithTheme(<CircleIndicator />);
-    expect(container.firstChild).toBeInTheDocument();
+    expect(container).toSnapshot();
   });
 });

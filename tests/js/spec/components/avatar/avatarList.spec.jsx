@@ -8,8 +8,8 @@ describe('AvatarList', function () {
   it('renders with user avatars', function () {
     const users = [TestStubs.User({id: '1'}), TestStubs.User({id: '2'})];
 
-    const {container} = render(<AvatarList users={users} />);
-    expect(container.querySelectorAll('.avatar')).toHaveLength(2);
+    render(<AvatarList users={users} />);
+    expect(screen.getAllByRole('img')).toHaveLength(2);
     expect(screen.queryByText(/other users/i)).not.toBeInTheDocument();
   });
 
@@ -23,12 +23,8 @@ describe('AvatarList', function () {
       TestStubs.User({id: '6'}),
     ];
 
-    const {container} = render(<AvatarList users={users} />);
-    expect(container.querySelectorAll('.avatar')).toHaveLength(5);
-    expect(
-      screen.getAllByText((_content, element) => {
-        return element?.textContent === '+1';
-      })[0]
-    ).toBeInTheDocument();
+    render(<AvatarList users={users} />);
+    expect(screen.getAllByRole('img')).toHaveLength(5);
+    expect(screen.getByText('+1')).toBeInTheDocument();
   });
 });

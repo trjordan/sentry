@@ -58,13 +58,13 @@ type State = {
 };
 
 class AssigneeSelector extends React.Component<Props, State> {
-  static defaultProps = {
+  static defaultProps: Partial<Props> = {
     size: 20,
   };
 
   state = this.getInitialState();
 
-  getInitialState() {
+  getInitialState(): State {
     const group = GroupStore.get(this.props.id);
     const memberList = MemberListStore.loaded ? MemberListStore.getAll() : undefined;
     const loading = GroupStore.hasStatus(this.props.id, 'assignTo');
@@ -216,7 +216,7 @@ class AssigneeSelector extends React.Component<Props, State> {
       searchKey: `${member.email} ${member.name}`,
       label: ({inputValue}) => (
         <MenuItemWrapper
-          data-testid="assignee-option"
+          data-test-id="assignee-option"
           key={buildUserId(member.id)}
           onSelect={this.assignToUser.bind(this, member)}
         >
@@ -248,7 +248,7 @@ class AssigneeSelector extends React.Component<Props, State> {
       searchKey: team.slug,
       label: ({inputValue}) => (
         <MenuItemWrapper
-          data-testid="assignee-option"
+          data-test-id="assignee-option"
           key={id}
           onSelect={this.assignToTeam.bind(this, team)}
         >
@@ -432,7 +432,7 @@ class AssigneeSelector extends React.Component<Props, State> {
             emptyHidesInput
           >
             {({getActorProps, isOpen}) => (
-              <DropdownButton {...getActorProps({})} data-testid="assignee-selector">
+              <DropdownButton {...getActorProps({})} data-test-id="assignee-selector">
                 {assignedTo ? (
                   <ActorAvatar
                     actor={assignedTo}

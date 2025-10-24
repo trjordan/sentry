@@ -19,13 +19,19 @@ describe('ErrorRobot', function () {
 
   describe('with a project', function () {
     beforeEach(function () {
+      const org = TestStubs.Organization();
       renderWithTheme(
         <ErrorRobot
           api={new MockApiClient()}
-          org={TestStubs.Organization()}
+          org={org}
           project={TestStubs.Project()}
           gradient
-        />
+        />,
+        {
+          context: {
+            organization: org,
+          },
+        }
       );
     });
 
@@ -39,8 +45,7 @@ describe('ErrorRobot', function () {
     it('Renders installation instructions', function () {
       const link = screen.getByTestId('install-instructions');
       expect(link).toBeInTheDocument();
-      // Just verify the button exists and links somewhere - the Component logic is tested
-      expect(link.tagName).toBe('A');
+      expect(link).toHaveAttribute('href', expect.stringContaining('getting-started'));
     });
   });
 

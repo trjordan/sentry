@@ -1,6 +1,7 @@
 import React from 'react';
 
 import {
+  act,
   changeReactMentionsInput,
   fireEvent,
   renderWithTheme,
@@ -56,25 +57,37 @@ describe('NoteInput', function () {
       group: {project: {}, id: 'groupId'},
       modelId: 'item-id',
       text: 'an existing item',
+      memberList: [],
+      teams: [],
       projectSlugs: [],
     };
 
     it('edits existing message', async function () {
-      renderWithTheme(<NoteInput {...defaultProps} />);
+      const onUpdate = jest.fn();
+      renderWithTheme(<NoteInput {...defaultProps} onUpdate={onUpdate} />);
 
       expect(screen.getByText('Edit')).toBeInTheDocument();
 
       // Switch to preview
       fireEvent.click(screen.getByText('Preview'));
 
-      // The preview area should show the text (checking it exists somewhere)
-      expect(screen.getAllByText('an existing item').length).toBeGreaterThan(0);
+      expect(screen.getByText('an existing item')).toBeInTheDocument();
 
       // Switch to edit
       fireEvent.click(screen.getByText('Edit'));
 
-      const textarea = screen.getByRole('textbox');
+      let textarea = screen.getByRole('textbox');
       expect(textarea).toHaveValue('an existing item');
+
+      // Can edit text
+      changeReactMentionsInput('new item');
+
+      // Need to query textarea again after state change
+      textarea = screen.getByRole('textbox');
+      
+      fireEvent.keyDown(textarea, {key: 'Enter', ctrlKey: true});
+
+      expect(onUpdate).toHaveBeenCalledWith({text: 'new item', mentions: []});
     });
 
     it('canels editing and moves to preview mode', async function () {

@@ -1,13 +1,12 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {renderWithTheme, screen, waitFor, fireEvent} from 'sentry-test/reactTestingLibrary';
 
 import RecoveryOptionsModal from 'app/components/modals/recoveryOptionsModal';
 
 describe('RecoveryOptionsModal', function () {
   const closeModal = jest.fn();
   const onClose = jest.fn();
-  let wrapper;
 
   beforeEach(function () {
     MockApiClient.clearMockResponses();
@@ -16,7 +15,14 @@ describe('RecoveryOptionsModal', function () {
       method: 'GET',
       body: TestStubs.AllAuthenticators(),
     });
-    wrapper = mountWithTheme(
+  });
+
+  afterEach(function () {
+    jest.clearAllMocks();
+  });
+
+  it('can redirect to recovery codes if user skips backup phone setup', async function () {
+    renderWithTheme(
       <RecoveryOptionsModal
         Body={p => p.children}
         Header={p => p.children}
@@ -24,39 +30,61 @@ describe('RecoveryOptionsModal', function () {
         authenticatorName="Authenticator App"
         closeModal={closeModal}
         onClose={onClose}
-      />,
-      TestStubs.routerContext()
+      />
     );
-  });
 
-  afterEach(function () {});
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByText('Add a Phone Number')).toBeInTheDocument();
+    });
 
-  it('can redirect to recovery codes if user skips backup phone setup', async function () {
-    const getRecoveryCodes = 'RecoveryOptionsModal Button[name="getCodes"]';
-    expect(wrapper.find(getRecoveryCodes)).toHaveLength(0);
+    // Initially, Get Recovery Codes button should not exist
+    expect(screen.queryByText('Get Recovery Codes')).not.toBeInTheDocument();
 
     // skip backup phone setup
-    wrapper.find('RecoveryOptionsModal Button[name="skipStep"]').simulate('click');
-    expect(wrapper.find(getRecoveryCodes)).toHaveLength(1);
+    const skipButton = screen.getByText('Skip this step');
+    fireEvent.click(skipButton);
+
+    // Now Get Recovery Codes button should appear
+    await waitFor(() => {
+      expect(screen.getByText('Get Recovery Codes')).toBeInTheDocument();
+    });
 
     const mockId = TestStubs.Authenticators().Recovery().authId;
-    expect(
-      wrapper.find('RecoveryOptionsModal Button[name="getCodes"]').prop('to')
-    ).toMatch(`/settings/account/security/mfa/${mockId}/`);
+    const getCodesButton = screen.getByText('Get Recovery Codes').closest('a');
+    expect(getCodesButton).toHaveAttribute(
+      'href',
+      expect.stringMatching(`/settings/account/security/mfa/${mockId}/`)
+    );
 
-    wrapper.find(getRecoveryCodes).simulate('click');
+    fireEvent.click(getCodesButton);
     expect(closeModal).toHaveBeenCalled();
   });
 
   it('can redirect to backup phone setup', async function () {
-    const backupPhone = 'RecoveryOptionsModal Button[name="addPhone"]';
-
-    expect(wrapper.find(backupPhone)).toHaveLength(1);
-    expect(wrapper.find(backupPhone).prop('to')).toMatch(
-      '/settings/account/security/mfa/sms/enroll/'
+    renderWithTheme(
+      <RecoveryOptionsModal
+        Body={p => p.children}
+        Header={p => p.children}
+        Footer={p => p.children}
+        authenticatorName="Authenticator App"
+        closeModal={closeModal}
+        onClose={onClose}
+      />
     );
 
-    wrapper.find(backupPhone).simulate('click');
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByText('Add a Phone Number')).toBeInTheDocument();
+    });
+
+    const addPhoneButton = screen.getByText('Add a Phone Number').closest('a');
+    expect(addPhoneButton).toHaveAttribute(
+      'href',
+      expect.stringMatching('/settings/account/security/mfa/sms/enroll/')
+    );
+
+    fireEvent.click(addPhoneButton);
     expect(closeModal).toHaveBeenCalled();
   });
 
@@ -67,7 +95,8 @@ describe('RecoveryOptionsModal', function () {
       method: 'GET',
       body: [TestStubs.Authenticators().Totp(), TestStubs.Authenticators().Recovery()],
     });
-    wrapper = mountWithTheme(
+
+    renderWithTheme(
       <RecoveryOptionsModal
         Body={p => p.children}
         Header={p => p.children}
@@ -75,15 +104,23 @@ describe('RecoveryOptionsModal', function () {
         authenticatorName="Authenticator App"
         closeModal={closeModal}
         onClose={onClose}
-      />,
-      TestStubs.routerContext()
+      />
     );
-    const mockId = TestStubs.Authenticators().Recovery().authId;
-    expect(
-      wrapper.find('RecoveryOptionsModal Button[name="getCodes"]').prop('to')
-    ).toMatch(`/settings/account/security/mfa/${mockId}/`);
 
-    expect(wrapper.find('RecoveryOptionsModal Button[name="skipStep"]')).toHaveLength(0);
-    expect(wrapper.find('RecoveryOptionsModal Button[name="addPhone"]')).toHaveLength(0);
+    // Wait for component to load and verify Get Recovery Codes button is displayed
+    await waitFor(() => {
+      expect(screen.getByText('Get Recovery Codes')).toBeInTheDocument();
+    });
+
+    const mockId = TestStubs.Authenticators().Recovery().authId;
+    const getCodesButton = screen.getByText('Get Recovery Codes').closest('a');
+    expect(getCodesButton).toHaveAttribute(
+      'href',
+      expect.stringMatching(`/settings/account/security/mfa/${mockId}/`)
+    );
+
+    // Skip and Add Phone buttons should not exist
+    expect(screen.queryByText('Skip this step')).not.toBeInTheDocument();
+    expect(screen.queryByText('Add a Phone Number')).not.toBeInTheDocument();
   });
 });

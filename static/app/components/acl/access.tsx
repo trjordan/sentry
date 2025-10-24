@@ -79,17 +79,24 @@ class Access extends React.Component<Props> {
     const {
       organization,
       config,
-      access,
-      requireAll,
-      isSuperuser,
-      renderNoAccessMessage,
+      access = defaultProps.access,
+      requireAll = defaultProps.requireAll,
+      isSuperuser = defaultProps.isSuperuser,
+      renderNoAccessMessage = defaultProps.renderNoAccessMessage,
       children,
     } = this.props;
 
     const {access: orgAccess} = organization || {access: []};
     const method = requireAll ? 'every' : 'some';
 
-    const hasAccess = !access || access[method](acc => orgAccess.includes(acc));
+    // When isSuperuser prop is set, access should be based on superuser status
+    let hasAccess: boolean;
+    if (isSuperuser) {
+      hasAccess = !!(config.user && config.user.isSuperuser);
+    } else {
+      hasAccess =
+        !access || access.length === 0 || access[method](acc => orgAccess.includes(acc));
+    }
     const hasSuperuser = !!(config.user && config.user.isSuperuser);
 
     const renderProps: ChildRenderProps = {

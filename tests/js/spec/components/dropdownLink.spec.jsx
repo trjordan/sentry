@@ -247,7 +247,7 @@ describe('DropdownLink', function () {
     });
 
     it('Opens / closes on mouse enter and leave', async function () {
-      const {container, unmount} = renderWithTheme(
+      const {container} = renderWithTheme(
         <DropdownLink title="parent" alwaysRenderMenu={false}>
           <li id="nested-actor">
             <DropdownLink
@@ -279,18 +279,67 @@ describe('DropdownLink', function () {
       const nestedLink = container.querySelector('.dropdown-menu a');
       await userEvent.hover(nestedLink);
 
-      // Wait for hover delay (MENU_CLOSE_DELAY is 200ms)
+      // Wait for hover delay to open nested menu
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 250));
       });
 
       expect(container.querySelectorAll('.dropdown-menu')).toHaveLength(2);
 
-      // Verify the dropdown behavior without timer manipulation
+      // Leaving Nested Menu
       const nestedMenuLink = container.querySelector('a.nested-menu');
-      expect(nestedMenuLink).toBeTruthy();
+      await userEvent.unhover(nestedMenuLink);
 
-      unmount();
+      // Nested menus have close delay - should still be open shortly after leaving
+      expect(container.querySelectorAll('.dropdown-menu')).toHaveLength(2);
+
+      // Wait for part of the close delay (199ms out of 200ms)
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 199));
+      });
+
+      // Re-entering nested menu will cancel close
+      expect(container.querySelectorAll('.dropdown-menu')).toHaveLength(2);
+      await userEvent.hover(nestedMenuLink);
+
+      // Wait a tiny bit more (total would have exceeded 200ms)
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 2));
+      });
+
+      // Should still be open because we re-entered
+      expect(container.querySelectorAll('.dropdown-menu')).toHaveLength(2);
+
+      // Leave again and test re-entering an actor to cancel close
+      await userEvent.unhover(nestedMenuLink);
+      expect(container.querySelectorAll('.dropdown-menu')).toHaveLength(2);
+
+      // Wait for part of the close delay again
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 199));
+      });
+
+      // Re-entering the first actor link will also cancel close
+      const firstActorLink = container.querySelector('.dropdown-menu a');
+      await userEvent.hover(firstActorLink);
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 2));
+      });
+
+      // Should still have both menus open
+      expect(container.querySelectorAll('.dropdown-menu')).toHaveLength(2);
+
+      // Leave menu completely
+      await userEvent.unhover(nestedMenuLink);
+
+      // Wait for close delay to complete
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 250));
+      });
+
+      // Should close nested menu, leaving only parent menu
+      expect(container.querySelectorAll('.dropdown-menu')).toHaveLength(1);
     });
 
     it('closes when first level nested actor is clicked', async function () {

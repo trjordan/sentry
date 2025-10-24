@@ -1,10 +1,6 @@
-import React from 'react';
-
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {initializeOrg} from 'sentry-test/initializeOrg';
+import {renderGlobalModal, screen, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import {openHelpSearchModal} from 'app/actionCreators/modal';
-import App from 'app/views/app';
 
 describe('Docs Search Modal', function () {
   beforeEach(function () {
@@ -54,22 +50,23 @@ describe('Docs Search Modal', function () {
   });
 
   it('can open help search modal', async function () {
-    const {routerContext} = initializeOrg();
+    // Render the GlobalModal to capture modals
+    renderGlobalModal();
 
-    const wrapper = mountWithTheme(
-      <App params={{orgId: 'org-slug'}}>{<div>placeholder content</div>}</App>,
-      routerContext
-    );
+    // No Modal initially
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
-    // No Modal
-    expect(wrapper.find('ModalDialog')).toHaveLength(0);
+    // Open the help search modal
     openHelpSearchModal();
-    await tick();
-    await tick();
-    wrapper.update();
 
-    // Should have Modal + input
-    expect(wrapper.find('ModalDialog')).toHaveLength(1);
-    expect(wrapper.find('HelpSearch')).toHaveLength(1);
+    // Wait for modal to appear - use getAllByRole since there are multiple dialogs
+    await waitFor(() => {
+      expect(screen.getAllByRole('dialog').length).toBeGreaterThan(0);
+    });
+
+    // Should have HelpSearch component (check for searchbox with the placeholder text)
+    expect(
+      screen.getByPlaceholderText('Search for documentation, FAQs, blog posts...')
+    ).toBeInTheDocument();
   });
 });

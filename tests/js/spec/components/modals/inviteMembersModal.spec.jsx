@@ -1,6 +1,13 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {
+  render,
+  renderWithTheme,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from 'sentry-test/reactTestingLibrary';
 
 import InviteMembersModal from 'app/components/modals/inviteMembersModal';
 import TeamStore from 'app/stores/teamStore';
@@ -42,94 +49,78 @@ describe('InviteMembersModal', function () {
   });
 
   it('renders', async function () {
-    const wrapper = mountWithTheme(
-      <InviteMembersModal {...modalProps} organization={org} />,
-      TestStubs.routerContext()
-    );
+    renderWithTheme(<InviteMembersModal {...modalProps} organization={org} />);
 
     // Starts with one invite row
-    expect(wrapper.find('StyledInviteRow')).toHaveLength(1);
+    expect(screen.getByTestId('select-emails')).toBeInTheDocument();
 
     // We have two roles loaded from the members/me endpoint, defaulting to the
     // 'member' role.
-    expect(wrapper.find('RoleSelectControl').props().roles).toHaveLength(roles.length);
-    expect(wrapper.find('RoleSelectControl SingleValue').text()).toBe('Member');
+    const roleSelect = screen.getByTestId('select-role');
+    expect(within(roleSelect).getByText('Member')).toBeInTheDocument();
   });
 
   it('renders without organization.access', async function () {
     const organization = TestStubs.Organization({access: undefined});
-    const wrapper = mountWithTheme(
-      <InviteMembersModal {...modalProps} organization={organization} />,
-      TestStubs.routerContext()
-    );
+    renderWithTheme(<InviteMembersModal {...modalProps} organization={organization} />);
 
-    expect(wrapper.find('StyledInviteRow').exists()).toBe(true);
+    expect(screen.getByTestId('select-emails')).toBeInTheDocument();
   });
 
   it('can add a second row', async function () {
-    const wrapper = mountWithTheme(
-      <InviteMembersModal {...modalProps} organization={org} />,
-      TestStubs.routerContext()
-    );
+    renderWithTheme(<InviteMembersModal {...modalProps} organization={org} />);
 
-    expect(wrapper.find('StyledInviteRow')).toHaveLength(1);
-    wrapper.find('AddButton').simulate('click');
-    expect(wrapper.find('StyledInviteRow')).toHaveLength(2);
+    expect(screen.getAllByTestId('select-emails')).toHaveLength(1);
+    
+    const addButton = screen.getByRole('button', {name: 'Add another'});
+    await userEvent.click(addButton);
+    
+    expect(screen.getAllByTestId('select-emails')).toHaveLength(2);
   });
 
   it('errors on duplicate emails', async function () {
-    const wrapper = mountWithTheme(
-      <InviteMembersModal {...modalProps} organization={org} />,
-      TestStubs.routerContext()
-    );
+    renderWithTheme(<InviteMembersModal {...modalProps} organization={org} />);
 
-    wrapper.find('AddButton').simulate('click');
-    expect(wrapper.find('StyledInviteRow')).toHaveLength(2);
+    // Add a second row
+    const addButton = screen.getByRole('button', {name: 'Add another'});
+    await userEvent.click(addButton);
 
-    const rows = wrapper.find('StyledInviteRow');
+    expect(screen.getAllByTestId('select-emails')).toHaveLength(2);
 
-    rows
-      .at(0)
-      .props()
-      .onChangeEmails([{value: 'test@test.com'}]);
-    rows
-      .at(1)
-      .props()
-      .onChangeEmails([{value: 'test@test.com'}]);
-    wrapper.update();
+    // Type the same email in both fields
+    const emailInputs = screen.getAllByTestId('select-emails');
+    const firstInput = within(emailInputs[0]).getByRole('combobox');
+    const secondInput = within(emailInputs[1]).getByRole('combobox');
 
-    expect(wrapper.find('StatusMessage[status="error"]').text()).toBe(
-      'Duplicate emails between invite rows.'
-    );
+    await userEvent.type(firstInput, 'test@test.com{enter}');
+    await userEvent.type(secondInput, 'test@test.com{enter}');
+
+    await waitFor(() => {
+      expect(screen.getByText('Duplicate emails between invite rows.')).toBeInTheDocument();
+    });
   });
 
-  it('indicates the total invites on the invite button', function () {
-    const wrapper = mountWithTheme(
-      <InviteMembersModal {...modalProps} organization={org} />,
-      TestStubs.routerContext()
-    );
+  it('indicates the total invites on the invite button', async function () {
+    renderWithTheme(<InviteMembersModal {...modalProps} organization={org} />);
 
-    wrapper
-      .find('StyledInviteRow')
-      .first()
-      .props()
-      .onChangeEmails([{value: 'test1@test.com'}, {value: 'test2@test.com'}]);
-    wrapper.update();
+    const emailInput = within(screen.getByTestId('select-emails')).getByRole('combobox');
+    await userEvent.type(emailInput, 'test1@test.com{enter}');
+    await userEvent.type(emailInput, 'test2@test.com{enter}');
 
-    expect(wrapper.find('Button[data-test-id="send-invites"]').text()).toBe(
-      'Send invites (2)'
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId('send-invites')).toHaveTextContent('Send invites (2)');
+    });
   });
 
-  it('can be closed', function () {
+  it('can be closed', async function () {
     const close = jest.fn();
 
-    const wrapper = mountWithTheme(
-      <InviteMembersModal {...modalProps} organization={org} closeModal={close} />,
-      TestStubs.routerContext()
+    renderWithTheme(
+      <InviteMembersModal {...modalProps} organization={org} closeModal={close} />
     );
 
-    wrapper.find('Button[data-test-id="cancel"]').simulate('click');
+    const cancelButton = screen.getByTestId('cancel');
+    await userEvent.click(cancelButton);
     expect(close).toHaveBeenCalled();
   });
 

@@ -130,9 +130,10 @@ describe('Filter', () => {
     const firstOption = screen.getByText('HTTP request').parentElement;
     expect(firstOption).toHaveTextContent('HTTP request');
 
-    // Check checkbox is rendered and checked - use data-test-id instead
-    const checkbox = firstOption?.querySelector('[data-test-id="checkbox-fancy"]');
+    // Check checkbox is rendered and checked
+    const checkbox = firstOption?.querySelector('[role="checkbox"]');
     expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
 
     // Click the first option using fireEvent instead of userEvent
     fireEvent.click(firstOption!);
@@ -159,9 +160,10 @@ describe('Filter', () => {
     const firstOption = infoText.closest('li');
     expect(firstOption).toHaveTextContent(options[1][0].type.toLocaleLowerCase());
 
-    // Check checkbox is rendered and checked - use data-test-id instead
-    const checkbox = firstOption?.querySelector('[data-test-id="checkbox-fancy"]');
+    // Check checkbox is rendered and checked
+    const checkbox = firstOption?.querySelector('[role="checkbox"]');
     expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
 
     // Click the first option using fireEvent instead of userEvent
     fireEvent.click(firstOption!);

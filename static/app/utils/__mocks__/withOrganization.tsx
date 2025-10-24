@@ -12,7 +12,7 @@ const withOrganizationMock = WrappedComponent =>
     render() {
       return (
         <WrappedComponent
-          organization={this.context.organization || TestStubs.Organization()}
+          organization={this.props.organization || this.context.organization}
           {...this.props}
         />
       );

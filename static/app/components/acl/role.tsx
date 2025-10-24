@@ -18,9 +18,9 @@ type Props = {
    */
   role: string;
   /**
-   * Current Organization
+   * Current Organization (can be provided via prop or context through withOrganization HOC)
    */
-  organization: Organization;
+  organization?: Organization;
   /**
    * If children is a function then will be treated as a render prop and
    * passed RoleRenderProps.
@@ -35,6 +35,11 @@ class Role extends React.Component<Props> {
   hasRole() {
     const user = ConfigStore.get('user');
     const {organization, role} = this.props;
+    
+    if (!organization) {
+      return false;
+    }
+    
     const {availableRoles} = organization;
     const currentRole = organization.role ?? '';
 

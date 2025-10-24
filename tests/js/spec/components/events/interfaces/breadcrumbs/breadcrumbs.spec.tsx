@@ -47,111 +47,106 @@ describe('BreadcrumbsInterface', () => {
 
   describe('filterCrumbs', () => {
     it('should filter crumbs based on crumb message', async () => {
-      renderWithTheme(<BreadcrumbsInterface {...props} />);
+      const {container} = renderWithTheme(<BreadcrumbsInterface {...props} />);
 
       const searchInput = screen.getByPlaceholderText('Search breadcrumbs');
 
-      // First verify we can see some 'sup' messages
-      const supElements = screen.queryAllByText('sup');
-      expect(supElements.length).toBeGreaterThan(0);
-
       // Type a search that won't match anything
       await userEvent.clear(searchInput);
-      await userEvent.type(searchInput, 'nomatchforthis{enter}');
-      // Wait for the component to update - check that the original content is gone
+      await userEvent.type(searchInput, 'hi{enter}');
+      // Wait for the component to update - check that nothing matches
       await waitFor(() => {
-        const supElementsAfterFilter = screen.queryAllByText('sup');
-        expect(supElementsAfterFilter.length).toBe(0);
+        // Count breadcrumb rows - the original test checked filteredBySearch length of 0
+        const rows = container.querySelectorAll('[data-test-id="breadcrumb-row"]');
+        expect(rows.length).toBe(0);
       });
 
-      // Clear and type a new search
+      // Clear and type a new search for 'up' which matches 'sup' messages
       await userEvent.clear(searchInput);
-      await userEvent.type(searchInput, 'sup{enter}');
+      await userEvent.type(searchInput, 'up{enter}');
       await waitFor(() => {
-        // Should show breadcrumbs that contain 'sup'
-        const supElementsAgain = screen.queryAllByText('sup');
-        expect(supElementsAgain.length).toBeGreaterThan(0);
+        // Should show 13 breadcrumbs that contain 'up' (13 items have 'sup' message)
+        const rows = container.querySelectorAll('[data-test-id="breadcrumb-row"]');
+        expect(rows.length).toBe(13);
       });
     });
 
     it('should filter crumbs based on crumb level', async () => {
-      renderWithTheme(<BreadcrumbsInterface {...props} />);
+      const {container} = renderWithTheme(<BreadcrumbsInterface {...props} />);
 
       const searchInput = screen.getByPlaceholderText('Search breadcrumbs');
 
       await userEvent.clear(searchInput);
-      await userEvent.type(searchInput, 'extreme{enter}');
+      await userEvent.type(searchInput, 'ext{enter}');
       await waitFor(() => {
-        // Should show breadcrumbs that contain 'extreme' in level
-        const supElements = screen.queryAllByText('sup');
-        expect(supElements.length).toBeGreaterThan(0);
+        // Should show 16 breadcrumbs that contain 'ext' in level (16 have level 'extreme')
+        const rows = container.querySelectorAll('[data-test-id="breadcrumb-row"]');
+        expect(rows.length).toBe(16);
       });
     });
 
     it('should filter crumbs based on crumb category', async () => {
-      renderWithTheme(<BreadcrumbsInterface {...props} />);
+      const {container} = renderWithTheme(<BreadcrumbsInterface {...props} />);
 
       const searchInput = screen.getByPlaceholderText('Search breadcrumbs');
 
       await userEvent.clear(searchInput);
       await userEvent.type(searchInput, 'error{enter}');
       await waitFor(() => {
-        // Should show breadcrumbs with category 'error'
-        // 'hey' has category 'error'
-        const heyElements = screen.queryAllByText('hey');
-        expect(heyElements.length).toBeGreaterThan(0);
-        // 'ok' has category 'error'
-        const okElements = screen.queryAllByText('ok');
-        expect(okElements.length).toBeGreaterThan(0);
+        // Should show 2 breadcrumbs with category 'error' ('hey' and 'ok')
+        const rows = container.querySelectorAll('[data-test-id="breadcrumb-row"]');
+        expect(rows.length).toBe(2);
       });
     });
   });
 
   describe('render', () => {
-    it('should display the correct number of crumbs with no filter', () => {
+    it('should display the correct number of crumbs with no filter', async () => {
       props.data.values = props.data.values.slice(0, 4);
-      renderWithTheme(<BreadcrumbsInterface {...props} />);
+      const {container} = renderWithTheme(<BreadcrumbsInterface {...props} />);
 
-      // Count the number of breadcrumb items rendered
-      // ListBody components are wrapped in divs, so we look for the message text
-      expect(screen.getByText('sup')).toBeInTheDocument();
-      expect(screen.getByText('hey')).toBeInTheDocument();
-      expect(screen.getByText('hello')).toBeInTheDocument();
-      expect(screen.getByText('bye')).toBeInTheDocument();
+      // Wait for the virtual list to render all rows
+      await waitFor(() => {
+        // Count the number of Row components rendered - original test expected 4
+        const rows = container.querySelectorAll('[data-test-id="breadcrumb-row"]');
+        expect(rows.length).toBe(4);
+      });
     });
 
     it('should display the correct number of crumbs with a filter', async () => {
       props.data.values = props.data.values.slice(0, 4);
-      renderWithTheme(<BreadcrumbsInterface {...props} />);
+      const {container} = renderWithTheme(<BreadcrumbsInterface {...props} />);
 
-      // Verify all items are initially displayed
-      expect(screen.getByText('sup')).toBeInTheDocument();
-      expect(screen.getByText('hey')).toBeInTheDocument();
-      expect(screen.getByText('hello')).toBeInTheDocument();
-      expect(screen.getByText('bye')).toBeInTheDocument();
+      // Wait for the virtual list to render all initial rows
+      await waitFor(() => {
+        const rows = container.querySelectorAll('[data-test-id="breadcrumb-row"]');
+        expect(rows.length).toBe(4);
+      });
 
       const searchInput = screen.getByPlaceholderText('Search breadcrumbs');
 
-      await userEvent.type(searchInput, 'hello{enter}');
+      await userEvent.type(searchInput, 'sup{enter}');
 
       await waitFor(() => {
-        // After filtering for 'hello', only 'hello' should be visible
-        expect(screen.getByText('hello')).toBeInTheDocument();
-        // Check that visible count has changed (we're filtering something)
-        const allMessages = screen.getAllByText(/sup|hey|hello|bye/);
-        // Before: 4 items, after filtering for 'hello' should have just 1
-        expect(allMessages.length).toBe(1);
+        // After filtering for 'sup', only 1 item should be visible (matching original test)
+        const filteredRows = container.querySelectorAll('[data-test-id="breadcrumb-row"]');
+        expect(filteredRows.length).toBe(1);
       });
     });
 
-    it('should not crash if data contains a toString attribute', () => {
+    it('should not crash if data contains a toString attribute', async () => {
       // Regression test: A "toString" property in data should not falsely be
       // used to coerce breadcrumb data to string. This would cause a TypeError.
       const data = {nested: {toString: 'hello'}};
       props.data.values = [{message: 'sup', category: 'default', level: 'info', data}];
-      renderWithTheme(<BreadcrumbsInterface {...props} />);
+      const {container} = renderWithTheme(<BreadcrumbsInterface {...props} />);
 
-      expect(screen.getByText('sup')).toBeInTheDocument();
+      // Wait for the virtual list to render
+      await waitFor(() => {
+        // Original test expected 1 Row
+        const rows = container.querySelectorAll('[data-test-id="breadcrumb-row"]');
+        expect(rows.length).toBe(1);
+      });
     });
   });
 });

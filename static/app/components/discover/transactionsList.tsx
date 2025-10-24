@@ -532,7 +532,7 @@ class TransactionsTable extends React.PureComponent<TableProps> {
 
         resultsRow.push(
           <BodyCellContainer
-            data-testid="baseline-cell"
+            data-test-id="baseline-cell"
             key={`${rowIndex}-baseline`}
             style={{textAlign: 'right'}}
           >
@@ -545,7 +545,7 @@ class TransactionsTable extends React.PureComponent<TableProps> {
         );
       } else {
         resultsRow.push(
-          <BodyCellContainer data-testid="baseline-cell" key={`${rowIndex}-baseline`}>
+          <BodyCellContainer data-test-id="baseline-cell" key={`${rowIndex}-baseline`}>
             {'\u2014'}
           </BodyCellContainer>
         );

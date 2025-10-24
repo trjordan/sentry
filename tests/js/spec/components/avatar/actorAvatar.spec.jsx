@@ -30,22 +30,24 @@ describe('ActorAvatar', function () {
   afterEach(function () {});
 
   describe('render()', function () {
-    it('should show a user avatar when actor type is a user', function () {
-      renderWithTheme(
+    it('should show a gravatar when actor type is a user', function () {
+      const {container} = renderWithTheme(
         <ActorAvatar
           actor={{
             id: '1',
             name: 'Jane Bloggs',
             type: 'user',
           }}
-          hasTooltip={false}
+          gravatar
         />
       );
-      // User should render with letter avatar (since no email in store lookup and gravatar=false by default)
-      expect(screen.getByText('JB')).toBeInTheDocument();
+      // The user from MemberListStore has an email, so with gravatar prop enabled,
+      // it should render a gravatar type avatar
+      const avatar = container.querySelector('[type="gravatar"]');
+      expect(avatar).toBeInTheDocument();
     });
 
-    it('should show a letter avatar when actor type is a team', function () {
+    it('should not show a gravatar when actor type is a team', function () {
       renderWithTheme(
         <ActorAvatar
           actor={{
@@ -53,9 +55,9 @@ describe('ActorAvatar', function () {
             name: 'COOL TEAM',
             type: 'team',
           }}
-          hasTooltip={false}
         />
       );
+      // Verify LetterAvatar is present with team initials
       expect(screen.getByText('CT')).toBeInTheDocument();
     });
 

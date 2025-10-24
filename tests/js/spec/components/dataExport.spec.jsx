@@ -31,16 +31,14 @@ describe('DataExport', function () {
         api={mockApi}
         organization={mockUnauthorizedOrg}
         payload={mockPayload}
-      />,
-      {context: {organization: mockUnauthorizedOrg}}
+      />
     );
     expect(container).toBeEmptyDOMElement();
   });
 
   it('should render the button for an authorized organization', function () {
     renderWithTheme(
-      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />,
-      {context: {organization: mockAuthorizedOrg}}
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />
     );
     expect(screen.getByRole('button', {name: 'Export All to CSV'})).toBeInTheDocument();
   });
@@ -50,8 +48,7 @@ describe('DataExport', function () {
     renderWithTheme(
       <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload}>
         {testString}
-      </DataExport>,
-      {context: {organization: mockAuthorizedOrg}}
+      </DataExport>
     );
     expect(screen.getByRole('button', {name: testString})).toBeInTheDocument();
   });
@@ -69,8 +66,7 @@ describe('DataExport', function () {
         organization={mockAuthorizedOrg}
         payload={mockPayload}
         disabled
-      />,
-      {context: {organization: mockAuthorizedOrg}}
+      />
     );
     const button = screen.getByRole('button', {name: 'Export All to CSV'});
     expect(button).toHaveAttribute('aria-disabled', 'true');
@@ -86,14 +82,15 @@ describe('DataExport', function () {
       body: {id: 721},
     });
     renderWithTheme(
-      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />,
-      {context: {organization: mockAuthorizedOrg}}
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />
     );
     const button = screen.getByRole('button', {name: 'Export All to CSV'});
+    // First assertion: button should NOT be disabled initially
     expect(button).not.toHaveAttribute('aria-disabled', 'true');
 
     await userEvent.click(button);
 
+    // Second assertion: button should be disabled immediately after click
     await waitFor(() => {
       expect(
         screen.getByRole('button', {name: "We're working on it..."})
@@ -109,6 +106,13 @@ describe('DataExport', function () {
       error: expect.anything(),
       success: expect.anything(),
     });
+
+    // Third assertion: button should remain disabled after the request completes
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', {name: "We're working on it..."})
+      ).toHaveAttribute('aria-disabled', 'true');
+    });
   });
 
   it('should reset the state when receiving a new payload', async function () {
@@ -119,8 +123,7 @@ describe('DataExport', function () {
       body: {id: 721},
     });
     const {rerender} = renderWithTheme(
-      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />,
-      {context: {organization: mockAuthorizedOrg}}
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />
     );
 
     await userEvent.click(screen.getByRole('button', {name: 'Export All to CSV'}));
@@ -153,8 +156,7 @@ describe('DataExport', function () {
       statusCode: 400,
     });
     renderWithTheme(
-      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />,
-      {context: {organization: mockAuthorizedOrg}}
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />
     );
 
     await userEvent.click(screen.getByRole('button', {name: 'Export All to CSV'}));
@@ -180,8 +182,7 @@ describe('DataExport', function () {
       body: {detail: 'uh oh'},
     });
     renderWithTheme(
-      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />,
-      {context: {organization: mockAuthorizedOrg}}
+      <DataExport api={mockApi} organization={mockAuthorizedOrg} payload={mockPayload} />
     );
 
     await userEvent.click(screen.getByRole('button', {name: 'Export All to CSV'}));
