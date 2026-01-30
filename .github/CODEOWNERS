@@ -66,6 +66,55 @@ build-utils/        @getsentry/owners-js-build
 
 # Owners by product feature
 
+### JS Test Ownership ###
+
+# UI Platform (shared components) - broad rule, overridden by specific teams below
+/tests/js/spec/components/                                         @getsentry/ui-platform
+
+# Fundamentals (state management, utilities, data fetching)
+/tests/js/spec/actionCreators/                                     @getsentry/fundamentals
+/tests/js/spec/stores/                                             @getsentry/fundamentals
+/tests/js/spec/utils/                                              @getsentry/fundamentals
+/tests/js/spec/helpers/                                            @getsentry/fundamentals
+
+# Settings UI - broad rule, overridden by workflow team below
+/tests/js/spec/views/settings/                                     @getsentry/settings-ui
+
+# Issues
+/tests/js/spec/views/issueList/                                    @getsentry/issues
+/tests/js/spec/views/organizationGroupDetails/                     @getsentry/issues
+/tests/js/spec/views/userFeedback/                                 @getsentry/issues
+/tests/js/spec/views/sharedGroupDetails/                           @getsentry/issues
+/tests/js/spec/components/group/                                   @getsentry/issues
+/tests/js/spec/components/stream/                                  @getsentry/issues
+
+# Event Processing
+/tests/js/spec/components/events/                                  @getsentry/event-processing
+
+# Ecosystem (integrations & plugins)
+/tests/js/spec/views/organizationIntegrations/                     @getsentry/ecosystem
+/tests/js/spec/views/integrationPipeline/                          @getsentry/ecosystem
+/tests/js/spec/views/projectPlugins/                               @getsentry/ecosystem
+
+# Project Health (dashboards, stats, security headers)
+/tests/js/spec/views/projectDetail/                                @getsentry/project-health
+/tests/js/spec/views/projectsDashboard/                            @getsentry/project-health
+/tests/js/spec/views/projectSecurityHeaders/                       @getsentry/project-health
+/tests/js/spec/views/organizationStats/                            @getsentry/project-health
+/tests/js/spec/views/usageStats/                                   @getsentry/project-health
+/tests/js/spec/views/dataExport/                                   @getsentry/project-health
+
+# Growth (onboarding, auth, admin)
+/tests/js/spec/views/onboarding/                                   @getsentry/growth
+/tests/js/spec/views/projectInstall/                               @getsentry/growth
+/tests/js/spec/views/admin/                                        @getsentry/growth
+/tests/js/spec/views/auth/                                         @getsentry/growth
+/tests/js/spec/views/organizationActivity/                         @getsentry/growth
+/tests/js/spec/views/organizationDetails/                          @getsentry/growth
+
+### End of JS Test Ownership ###
+
+
 # Releases UI
 /static/app/views/releases/                                     @getsentry/owners-releases-ui
 /tests/js/spec/views/releases/                                  @getsentry/owners-releases-ui
