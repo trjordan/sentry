@@ -1,6 +1,7 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import FeatureDisabled from 'app/components/acl/featureDisabled';
 import {PanelAlert} from 'app/components/panels';
@@ -9,75 +10,73 @@ describe('FeatureDisabled', function () {
   const routerContext = TestStubs.routerContext();
 
   it('renders', function () {
-    const wrapper = mountWithTheme(
+    render(
       <FeatureDisabled
         features={['organization:my-features']}
         featureName="Some Feature"
       />,
-      routerContext
+      {context: routerContext}
     );
 
-    expect(wrapper.find('FeatureDisabledMessage').first().text()).toEqual(
-      expect.stringContaining('This feature is not enabled on your Sentry installation.')
-    );
-    expect(wrapper.exists('HelpButton')).toBe(true);
+    expect(
+      screen.getByText(/This feature is not enabled on your Sentry installation\./)
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: /Help/i})).toBeInTheDocument();
   });
 
   it('renders with custom message', function () {
     const customMessage = 'custom message';
-    const wrapper = mountWithTheme(
+    render(
       <FeatureDisabled
         message={customMessage}
         features={['organization:my-features']}
         featureName="Some Feature"
       />,
-      routerContext
+      {context: routerContext}
     );
 
-    expect(wrapper.find('FeatureDisabledMessage').first().text()).toEqual(
-      expect.stringContaining(customMessage)
-    );
+    expect(screen.getByText(customMessage)).toBeInTheDocument();
   });
 
   it('renders as an Alert', function () {
-    const wrapper = mountWithTheme(
+    render(
       <FeatureDisabled
         alert
         features={['organization:my-features']}
         featureName="Some Feature"
       />,
-      routerContext
+      {context: routerContext}
     );
 
-    expect(wrapper.exists('Alert')).toBe(true);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 
   it('renders with custom alert component', function () {
-    const wrapper = mountWithTheme(
+    render(
       <FeatureDisabled
         alert={PanelAlert}
         features={['organization:my-features']}
         featureName="Some Feature"
       />,
-      routerContext
+      {context: routerContext}
     );
 
-    expect(wrapper.exists('PanelAlert')).toBe(true);
+    // PanelAlert renders with role="alert"
+    expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 
-  it('displays instructions when help is clicked', function () {
-    const wrapper = mountWithTheme(
+  it('displays instructions when help is clicked', async function () {
+    render(
       <FeatureDisabled
         alert
         features={['organization:my-features']}
         featureName="Some Feature"
       />,
-      routerContext
+      {context: routerContext}
     );
 
-    wrapper.find('HelpButton').simulate('click');
-    wrapper.update();
+    await userEvent.click(screen.getByRole('button', {name: /Help/i}));
 
-    expect(wrapper.exists('HelpDescription')).toBe(true);
+    expect(screen.getByText(/Enable this feature on your sentry installation/)).toBeInTheDocument();
   });
 });
