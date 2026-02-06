@@ -1,17 +1,10 @@
-import React from 'react';
+import {act, render, waitFor} from '@testing-library/react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-
-import {doEventsRequest} from 'app/actionCreators/events';
 import EventsRequest from 'app/components/charts/eventsRequest';
 
 const COUNT_OBJ = {
   count: 123,
 };
-
-jest.mock('app/actionCreators/events', () => ({
-  doEventsRequest: jest.fn(),
-}));
 
 describe('EventsRequest', function () {
   const project = TestStubs.Project();
@@ -28,26 +21,30 @@ describe('EventsRequest', function () {
     includeTimeseries: true,
   };
 
-  let wrapper;
-
-  describe('with props changes', function () {
-    beforeAll(function () {
-      doEventsRequest.mockImplementation(() =>
-        Promise.resolve({
-          data: [[new Date(), [COUNT_OBJ]]],
-        })
-      );
-      wrapper = mountWithTheme(<EventsRequest {...DEFAULTS}>{mock}</EventsRequest>);
+  let eventsStatsMock;
+  beforeEach(function () {
+    mock.mockClear();
+    eventsStatsMock = MockApiClient.addMockResponse({
+      url: '/organizations/org-slug/events-stats/',
+      body: {
+        data: [
+          [123, [COUNT_OBJ]],
+          [456, [COUNT_OBJ]],
+        ],
+      },
     });
+  });
 
-    it('makes requests', async function () {
-      expect(mock).toHaveBeenNthCalledWith(
-        1,
-        expect.objectContaining({
-          loading: true,
-        })
-      );
+  it('makes requests', async function () {
+    render(<EventsRequest {...DEFAULTS}>{mock}</EventsRequest>);
+    expect(mock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        loading: true,
+      })
+    );
 
+    await waitFor(() => {
       expect(mock).toHaveBeenLastCalledWith(
         expect.objectContaining({
           loading: false,
@@ -55,58 +52,134 @@ describe('EventsRequest', function () {
             {
               seriesName: expect.anything(),
               data: [
-                expect.objectContaining({
-                  name: expect.any(Number),
-                  value: 123,
-                }),
+                {name: 123 * 1000, value: 123},
+                {name: 456 * 1000, value: 123},
               ],
             },
           ],
-          originalTimeseriesData: [[expect.anything(), expect.anything()]],
-        })
-      );
-
-      expect(doEventsRequest).toHaveBeenCalled();
-    });
-
-    it('makes a new request if projects prop changes', async function () {
-      doEventsRequest.mockClear();
-
-      wrapper.setProps({projects: [123]});
-      await tick();
-      wrapper.update();
-      expect(doEventsRequest).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          projects: [123],
+          originalTimeseriesData: [
+            [123, [COUNT_OBJ]],
+            [456, [COUNT_OBJ]],
+          ],
         })
       );
     });
 
-    it('makes a new request if environments prop changes', async function () {
-      doEventsRequest.mockClear();
+    expect(eventsStatsMock).toHaveBeenCalledTimes(1);
+  });
 
-      wrapper.setProps({environments: ['dev']});
-      await tick();
-      wrapper.update();
-      expect(doEventsRequest).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          environments: ['dev'],
-        })
+  it('makes a new request if projects prop changes', async function () {
+    const {rerender} = render(<EventsRequest {...DEFAULTS}>{mock}</EventsRequest>);
+    
+    await waitFor(() => {
+      expect(mock).toHaveBeenLastCalledWith(
+        expect.objectContaining({loading: false})
       );
     });
 
-    it('makes a new request if period prop changes', async function () {
-      doEventsRequest.mockClear();
+    rerender(
+      <EventsRequest {...DEFAULTS} projects={[123]}>
+        {mock}
+      </EventsRequest>
+    );
 
-      wrapper.setProps({period: '7d'});
-      await tick();
-      wrapper.update();
-      expect(doEventsRequest).toHaveBeenCalledWith(
+    await waitFor(() => {
+      expect(eventsStatsMock).toHaveBeenCalledTimes(2);
+      expect(eventsStatsMock).toHaveBeenLastCalledWith(
         expect.anything(),
         expect.objectContaining({
-          period: '7d',
+          query: expect.objectContaining({
+            project: [123],
+          }),
+        })
+      );
+    });
+  });
+
+  it('makes a new request if environments prop changes', async function () {
+    const {rerender} = render(<EventsRequest {...DEFAULTS}>{mock}</EventsRequest>);
+
+    await waitFor(() => {
+      expect(mock).toHaveBeenLastCalledWith(
+        expect.objectContaining({loading: false})
+      );
+    });
+
+    rerender(
+      <EventsRequest {...DEFAULTS} environments={['dev']}>
+        {mock}
+      </EventsRequest>
+    );
+
+    await waitFor(() => {
+      expect(eventsStatsMock).toHaveBeenCalledTimes(2);
+      expect(eventsStatsMock).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          query: expect.objectContaining({
+            environment: ['dev'],
+          }),
+        })
+      );
+    });
+  });
+
+  it('makes a new request if period prop changes', async function () {
+    const {rerender} = render(<EventsRequest {...DEFAULTS}>{mock}</EventsRequest>);
+
+    await waitFor(() => {
+      expect(mock).toHaveBeenLastCalledWith(
+        expect.objectContaining({loading: false})
+      );
+    });
+
+    rerender(
+      <EventsRequest {...DEFAULTS} period="7d">
+        {mock}
+      </EventsRequest>
+    );
+
+    await waitFor(() => {
+      expect(eventsStatsMock).toHaveBeenCalledTimes(2);
+      expect(eventsStatsMock).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          query: expect.objectContaining({
+            statsPeriod: '7d',
+          }),
+        })
+      );
+    });
+  });
+
+  it('makes a new request if start/end prop changes', async function () {
+    const {rerender} = render(<EventsRequest {...DEFAULTS}>{mock}</EventsRequest>);
+
+    await waitFor(() => {
+      expect(mock).toHaveBeenLastCalledWith(
+        expect.objectContaining({loading: false})
+      );
+    });
+
+    rerender(
+      <EventsRequest
+        {...DEFAULTS}
+        start={new Date()}
+        end={new Date()}
+      >
+        {mock}
+      </EventsRequest>
+    );
+
+    await waitFor(() => {
+      expect(eventsStatsMock).toHaveBeenCalledTimes(2);
+      expect(eventsStatsMock).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          query: expect.objectContaining({
+            start: expect.anything(),
+            end: expect.anything(),
+          }),
         })
       );
     });
@@ -114,409 +187,378 @@ describe('EventsRequest', function () {
 
   describe('transforms', function () {
     beforeEach(function () {
-      doEventsRequest.mockClear();
+      eventsStatsMock = MockApiClient.addMockResponse({
+        url: '/organizations/org-slug/events-stats/',
+        body: {
+          data: [
+            [123, [COUNT_OBJ]],
+            [456, [COUNT_OBJ]],
+            [789, [COUNT_OBJ]],
+          ],
+        },
+      });
     });
 
     it('expands period in query if `includePrevious`', async function () {
-      doEventsRequest.mockImplementation(() =>
-        Promise.resolve({
-          data: [
-            [
-              new Date(),
-              [
-                {...COUNT_OBJ, count: 321},
-                {...COUNT_OBJ, count: 79},
-              ],
-            ],
-            [new Date(), [COUNT_OBJ]],
-          ],
-        })
-      );
-      wrapper = mountWithTheme(
+      render(
         <EventsRequest {...DEFAULTS} includePrevious>
           {mock}
         </EventsRequest>
       );
 
-      await tick();
-      wrapper.update();
-
-      // actionCreator handles expanding the period when calling the API
-      expect(doEventsRequest).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          period: '24h',
-        })
-      );
-
-      expect(mock).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          loading: false,
-          allTimeseriesData: [
-            [
-              expect.anything(),
-              [
-                expect.objectContaining({count: 321}),
-                expect.objectContaining({count: 79}),
-              ],
-            ],
-            [expect.anything(), [expect.objectContaining({count: 123})]],
-          ],
-          timeseriesData: [
-            {
-              seriesName: expect.anything(),
-              data: [
-                expect.objectContaining({
-                  name: expect.anything(),
-                  value: 123,
-                }),
-              ],
-            },
-          ],
-          previousTimeseriesData: {
-            seriesName: 'Previous',
-            data: [
-              expect.objectContaining({
-                name: expect.anything(),
-                value: 400,
-              }),
-            ],
-          },
-
-          originalTimeseriesData: [
-            [expect.anything(), [expect.objectContaining({count: 123})]],
-          ],
-
-          originalPreviousTimeseriesData: [
-            [
-              expect.anything(),
-              [
-                expect.objectContaining({count: 321}),
-                expect.objectContaining({count: 79}),
-              ],
-            ],
-          ],
-        })
-      );
-    });
-
-    it('aggregates counts per timestamp only when `includeTimeAggregation` prop is true', async function () {
-      doEventsRequest.mockImplementation(() =>
-        Promise.resolve({
-          data: [[new Date(), [COUNT_OBJ, {...COUNT_OBJ, count: 100}]]],
-        })
-      );
-
-      wrapper = mountWithTheme(
-        <EventsRequest {...DEFAULTS} includeTimeseries>
-          {mock}
-        </EventsRequest>
-      );
-
-      await tick();
-      wrapper.update();
-
-      expect(mock).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          timeAggregatedData: {},
-        })
-      );
-
-      wrapper.setProps({
-        includeTimeAggregation: true,
-        timeAggregationSeriesName: 'aggregated series',
+      await waitFor(() => {
+        expect(eventsStatsMock).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            query: expect.objectContaining({
+              statsPeriod: '48h',
+            }),
+          })
+        );
       });
-      await tick();
-      wrapper.update();
-
-      expect(mock).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          timeAggregatedData: {
-            seriesName: 'aggregated series',
-            data: [{name: expect.anything(), value: 223}],
-          },
-        })
-      );
     });
 
-    it('aggregates all counts per timestamp when category name identical', async function () {
-      doEventsRequest.mockImplementation(() =>
-        Promise.resolve({
-          data: [[new Date(), [COUNT_OBJ, {...COUNT_OBJ, count: 100}]]],
-        })
-      );
-
-      wrapper = mountWithTheme(
-        <EventsRequest {...DEFAULTS} includeTimeseries>
-          {mock}
-        </EventsRequest>
-      );
-
-      await tick();
-      wrapper.update();
-
-      expect(mock).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          timeAggregatedData: {},
-        })
-      );
-
-      wrapper.setProps({
-        includeTimeAggregation: true,
-        timeAggregationSeriesName: 'aggregated series',
-      });
-      await tick();
-      wrapper.update();
-
-      expect(mock).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          timeAggregatedData: {
-            seriesName: 'aggregated series',
-            data: [{name: expect.anything(), value: 223}],
-          },
-        })
-      );
-    });
-  });
-
-  describe('yAxis', function () {
-    beforeEach(function () {
-      doEventsRequest.mockClear();
-    });
-
-    it('supports yAxis', async function () {
-      doEventsRequest.mockImplementation(() =>
-        Promise.resolve({
-          data: [
-            [
-              new Date(),
-              [
-                {...COUNT_OBJ, count: 321},
-                {...COUNT_OBJ, count: 79},
-              ],
-            ],
-            [new Date(), [COUNT_OBJ]],
-          ],
-        })
-      );
-
-      wrapper = mountWithTheme(
-        <EventsRequest {...DEFAULTS} includePrevious yAxis="apdex()">
-          {mock}
-        </EventsRequest>
-      );
-
-      await tick();
-      wrapper.update();
-
-      expect(mock).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          loading: false,
-          allTimeseriesData: [
-            [
-              expect.anything(),
-              [
-                expect.objectContaining({count: 321}),
-                expect.objectContaining({count: 79}),
-              ],
-            ],
-            [expect.anything(), [expect.objectContaining({count: 123})]],
-          ],
-          timeseriesData: [
-            {
-              seriesName: expect.anything(),
-              data: [
-                expect.objectContaining({
-                  name: expect.anything(),
-                  value: 123,
-                }),
-              ],
-            },
-          ],
-          previousTimeseriesData: {
-            seriesName: 'Previous',
-            data: [
-              expect.objectContaining({
-                name: expect.anything(),
-                value: 400,
-              }),
-            ],
-          },
-
-          originalTimeseriesData: [
-            [expect.anything(), [expect.objectContaining({count: 123})]],
-          ],
-
-          originalPreviousTimeseriesData: [
-            [
-              expect.anything(),
-              [
-                expect.objectContaining({count: 321}),
-                expect.objectContaining({count: 79}),
-              ],
-            ],
-          ],
-        })
-      );
-    });
-
-    it('supports multiple yAxis', async function () {
-      doEventsRequest.mockImplementation(() =>
-        Promise.resolve({
-          'epm()': {
-            data: [
-              [
-                new Date(),
-                [
-                  {...COUNT_OBJ, count: 321},
-                  {...COUNT_OBJ, count: 79},
-                ],
-              ],
-              [new Date(), [COUNT_OBJ]],
-            ],
-          },
-          'apdex()': {
-            data: [
-              [
-                new Date(),
-                [
-                  {...COUNT_OBJ, count: 321},
-                  {...COUNT_OBJ, count: 79},
-                ],
-              ],
-              [new Date(), [COUNT_OBJ]],
-            ],
-          },
-        })
-      );
-
-      wrapper = mountWithTheme(
-        <EventsRequest {...DEFAULTS} includePrevious yAxis={['apdex()', 'epm()']}>
-          {mock}
-        </EventsRequest>
-      );
-
-      await tick();
-      wrapper.update();
-
-      const generateExpected = name => {
-        return {
-          seriesName: name,
-          data: [
-            {name: expect.anything(), value: 400},
-            {name: expect.anything(), value: 123},
-          ],
-        };
-      };
-
-      expect(mock).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          loading: false,
-
-          results: [generateExpected('epm()'), generateExpected('apdex()')],
-        })
-      );
-    });
-  });
-
-  describe('topEvents', function () {
-    beforeEach(function () {
-      doEventsRequest.mockClear();
-    });
-
-    it('supports topEvents parameter', async function () {
-      doEventsRequest.mockImplementation(() =>
-        Promise.resolve({
-          'project1,error': {
-            data: [
-              [
-                new Date(),
-                [
-                  {...COUNT_OBJ, count: 321},
-                  {...COUNT_OBJ, count: 79},
-                ],
-              ],
-              [new Date(), [COUNT_OBJ]],
-            ],
-          },
-          'project1,warning': {
-            data: [
-              [
-                new Date(),
-                [
-                  {...COUNT_OBJ, count: 321},
-                  {...COUNT_OBJ, count: 79},
-                ],
-              ],
-              [new Date(), [COUNT_OBJ]],
-            ],
-          },
-        })
-      );
-
-      wrapper = mountWithTheme(
+    it('converts to relative period', async function () {
+      render(
         <EventsRequest
           {...DEFAULTS}
           includePrevious
-          field={['project', 'level']}
-          topEvents={2}
+          period="14d"
         >
           {mock}
         </EventsRequest>
       );
 
-      await tick();
-      wrapper.update();
+      await waitFor(() => {
+        expect(eventsStatsMock).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            query: expect.objectContaining({
+              statsPeriod: '28d',
+            }),
+          })
+        );
+      });
+    });
 
-      const generateExpected = name => {
-        return {
-          seriesName: name,
-          data: [
-            {name: expect.anything(), value: 400},
-            {name: expect.anything(), value: 123},
-          ],
-        };
-      };
-
-      expect(mock).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          loading: false,
-
-          results: [
-            generateExpected('project1,error'),
-            generateExpected('project1,warning'),
-          ],
-        })
+    it('converts to relative period (7d)', async function () {
+      render(
+        <EventsRequest
+          {...DEFAULTS}
+          includePrevious
+          period="7d"
+        >
+          {mock}
+        </EventsRequest>
       );
+
+      await waitFor(() => {
+        expect(eventsStatsMock).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            query: expect.objectContaining({
+              statsPeriod: '14d',
+            }),
+          })
+        );
+      });
+    });
+
+    it('does NOT convert when start/end', async function () {
+      render(
+        <EventsRequest
+          {...DEFAULTS}
+          includePrevious
+          start={new Date()}
+          end={new Date()}
+        >
+          {mock}
+        </EventsRequest>
+      );
+
+      await waitFor(() => {
+        expect(eventsStatsMock).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            query: expect.objectContaining({
+              start: expect.anything(),
+              end: expect.anything(),
+            }),
+          })
+        );
+        expect(eventsStatsMock).not.toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            query: expect.objectContaining({
+              statsPeriod: expect.anything(),
+            }),
+          })
+        );
+      });
+    });
+
+    it('splits results into `previous` and `current` data if `includePrevious`', async function () {
+      render(
+        <EventsRequest {...DEFAULTS} includePrevious>
+          {mock}
+        </EventsRequest>
+      );
+
+      await waitFor(() => {
+        expect(mock).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            loading: false,
+            allTimeseriesData: [
+              [123, [COUNT_OBJ]],
+              [456, [COUNT_OBJ]],
+              [789, [COUNT_OBJ]],
+            ],
+            timeseriesData: [
+              {
+                seriesName: expect.anything(),
+                data: [{name: 789 * 1000, value: 123}],
+              },
+            ],
+            previousTimeseriesData: {
+              seriesName: 'Previous',
+              data: [
+                {name: 456 * 1000, value: 123},
+                {name: 789 * 1000, value: 123},
+              ],
+            },
+            originalTimeseriesData: [
+              [456, [COUNT_OBJ]],
+              [789, [COUNT_OBJ]],
+            ],
+            originalPreviousTimeseriesData: [
+              [123, [COUNT_OBJ]],
+              [456, [COUNT_OBJ]],
+            ],
+          })
+        );
+      });
+    });
+  });
+
+  describe('timeAggregatedData', function () {
+    beforeEach(function () {
+      eventsStatsMock = MockApiClient.addMockResponse({
+        url: '/organizations/org-slug/events-stats/',
+        body: {
+          data: [
+            [123, [COUNT_OBJ]],
+            [456, [COUNT_OBJ]],
+            [789, [COUNT_OBJ]],
+          ],
+        },
+      });
+    });
+
+    it('aggregates data when `includeTimeAggregation` is true', async function () {
+      render(
+        <EventsRequest
+          {...DEFAULTS}
+          includeTimeAggregation
+          timeAggregationSeriesName="count"
+        >
+          {mock}
+        </EventsRequest>
+      );
+
+      await waitFor(() => {
+        expect(mock).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            timeAggregatedData: {
+              seriesName: 'count',
+              data: [{name: expect.anything(), value: expect.anything()}],
+            },
+          })
+        );
+      });
+    });
+
+    it('does not get aggregated data if `includeTimeAggregation` is false', async function () {
+      render(<EventsRequest {...DEFAULTS}>{mock}</EventsRequest>);
+
+      await waitFor(() => {
+        expect(mock).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            timeAggregatedData: {},
+          })
+        );
+      });
+    });
+  });
+
+  describe('yAxis', function () {
+    beforeEach(function () {
+      eventsStatsMock = MockApiClient.addMockResponse({
+        url: '/organizations/org-slug/events-stats/',
+        body: {
+          data: [
+            [123, [COUNT_OBJ]],
+            [456, [COUNT_OBJ]],
+            [789, [COUNT_OBJ]],
+          ],
+        },
+      });
+    });
+
+    it('supports yAxis', async function () {
+      render(
+        <EventsRequest {...DEFAULTS} yAxis="apdex()">
+          {mock}
+        </EventsRequest>
+      );
+
+      await waitFor(() => {
+        expect(eventsStatsMock).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            query: expect.objectContaining({
+              yAxis: 'apdex()',
+            }),
+          })
+        );
+      });
+    });
+
+    it('supports multiple yAxis', async function () {
+      eventsStatsMock = MockApiClient.addMockResponse({
+        url: '/organizations/org-slug/events-stats/',
+        body: {
+          'apdex()': {
+            data: [
+              [123, [COUNT_OBJ]],
+              [456, [COUNT_OBJ]],
+              [789, [COUNT_OBJ]],
+            ],
+          },
+          'epm()': {
+            data: [
+              [123, [COUNT_OBJ]],
+              [456, [COUNT_OBJ]],
+              [789, [COUNT_OBJ]],
+            ],
+          },
+        },
+      });
+
+      render(
+        <EventsRequest {...DEFAULTS} yAxis={['apdex()', 'epm()']}>
+          {mock}
+        </EventsRequest>
+      );
+
+      await waitFor(() => {
+        const [, result] = mock.mock.calls[mock.mock.calls.length - 1];
+        expect(result).toBeUndefined();
+        expect(mock).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            loading: false,
+            results: [
+              {
+                seriesName: 'apdex()',
+                data: [
+                  {name: 123 * 1000, value: 123},
+                  {name: 456 * 1000, value: 123},
+                  {name: 789 * 1000, value: 123},
+                ],
+              },
+              {
+                seriesName: 'epm()',
+                data: [
+                  {name: 123 * 1000, value: 123},
+                  {name: 456 * 1000, value: 123},
+                  {name: 789 * 1000, value: 123},
+                ],
+              },
+            ],
+          })
+        );
+      });
+    });
+  });
+
+  describe('topEvents', function () {
+    beforeEach(function () {
+      eventsStatsMock = MockApiClient.addMockResponse({
+        url: '/organizations/org-slug/events-stats/',
+        body: {
+          'field,value': {
+            data: [
+              [123, [COUNT_OBJ]],
+              [456, [COUNT_OBJ]],
+              [789, [COUNT_OBJ]],
+            ],
+          },
+        },
+      });
+    });
+
+    it('supports topEvents parameter', async function () {
+      render(
+        <EventsRequest
+          {...DEFAULTS}
+          field={['field', 'value']}
+          topEvents={5}
+        >
+          {mock}
+        </EventsRequest>
+      );
+
+      await waitFor(() => {
+        expect(eventsStatsMock).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            query: expect.objectContaining({
+              topEvents: 5,
+              field: ['field', 'value'],
+            }),
+          })
+        );
+
+        expect(mock).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            loading: false,
+            results: [
+              {
+                seriesName: 'field,value',
+                data: [
+                  {name: 123 * 1000, value: 123},
+                  {name: 456 * 1000, value: 123},
+                  {name: 789 * 1000, value: 123},
+                ],
+              },
+            ],
+          })
+        );
+      });
     });
   });
 
   describe('out of retention', function () {
     beforeEach(function () {
-      doEventsRequest.mockClear();
+      eventsStatsMock = MockApiClient.addMockResponse({
+        url: '/organizations/org-slug/events-stats/',
+        statusCode: 400,
+        body: {
+          detail: 'too much data',
+        },
+      });
     });
 
-    it('does not make request', async function () {
-      wrapper = mountWithTheme(
-        <EventsRequest {...DEFAULTS} expired>
-          {mock}
-        </EventsRequest>
-      );
-      expect(doEventsRequest).not.toHaveBeenCalled();
-    });
+    it('handles 400 error', async function () {
+      render(<EventsRequest {...DEFAULTS}>{mock}</EventsRequest>);
 
-    it('errors', async function () {
-      wrapper = mountWithTheme(
-        <EventsRequest {...DEFAULTS} expired>
-          {mock}
-        </EventsRequest>
-      );
-      expect(mock).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          expired: true,
-          errored: true,
-        })
-      );
+      await waitFor(() => {
+        expect(mock).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            expired: true,
+            errored: true,
+          })
+        );
+      });
     });
   });
 });

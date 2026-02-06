@@ -1,28 +1,27 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {fireEvent, render, screen} from 'sentry-test/reactTestingLibrary';
 
 import ApiTokenRow from 'app/views/settings/account/apiTokenRow';
 
 describe('ApiTokenRow', function () {
   it('renders', function () {
-    const wrapper = mountWithTheme(
+    const {container} = render(
       <ApiTokenRow onRemove={() => {}} token={TestStubs.ApiToken()} />,
-      TestStubs.routerContext()
+      {context: TestStubs.routerContext()}
     );
 
     // Should be loading
-    expect(wrapper).toSnapshot();
+    expect(container).toMatchSnapshot();
   });
 
   it('calls onRemove callback when trash can is clicked', function () {
     const cb = jest.fn();
-    const wrapper = mountWithTheme(
-      <ApiTokenRow onRemove={cb} token={TestStubs.ApiToken()} />,
-      TestStubs.routerContext()
-    );
+    render(<ApiTokenRow onRemove={cb} token={TestStubs.ApiToken()} />, {
+      context: TestStubs.routerContext(),
+    });
 
-    wrapper.find('Button').simulate('click');
+    fireEvent.click(screen.getByRole('button'));
     expect(cb).toHaveBeenCalled();
   });
 });

@@ -1,7 +1,5 @@
-import React from 'react';
-import PropTypes from 'prop-types';
-
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen} from 'sentry-test/reactTestingLibrary';
+import userEvent from '@testing-library/user-event';
 
 import {Client} from 'app/api';
 import AccountSubscriptions from 'app/views/settings/account/accountSubscriptions';
@@ -18,19 +16,12 @@ describe('AccountSubscriptions', function () {
       url: ENDPOINT,
       body: [],
     });
-    const wrapper = mountWithTheme(<AccountSubscriptions />, {
-      context: {
-        router: TestStubs.router(),
-      },
-      childContextTypes: {
-        router: PropTypes.object,
-      },
-    });
+    const {container} = render(<AccountSubscriptions />);
 
-    expect(wrapper).toSnapshot();
+    expect(container).toMatchSnapshot();
   });
 
-  it('renders list and can toggle', function () {
+  it('renders list and can toggle', async function () {
     Client.addMockResponse({
       url: ENDPOINT,
       body: TestStubs.Subscriptions(),
@@ -40,20 +31,14 @@ describe('AccountSubscriptions', function () {
       method: 'PUT',
     });
 
-    const wrapper = mountWithTheme(<AccountSubscriptions />, {
-      context: {
-        router: TestStubs.router(),
-      },
-      childContextTypes: {
-        router: PropTypes.object,
-      },
-    });
+    const {container} = render(<AccountSubscriptions />);
 
-    expect(wrapper).toSnapshot();
+    expect(container).toMatchSnapshot();
 
     expect(mock).not.toHaveBeenCalled();
 
-    wrapper.find('Switch').first().simulate('click');
+    const switches = screen.getAllByRole('checkbox');
+    await userEvent.click(switches[0]);
 
     expect(mock).toHaveBeenCalledWith(
       ENDPOINT,

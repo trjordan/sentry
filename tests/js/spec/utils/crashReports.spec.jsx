@@ -1,6 +1,4 @@
-import React from 'react';
-
-import {shallow} from 'sentry-test/enzyme';
+import {render} from 'sentry-test/reactTestingLibrary';
 
 import {
   formatStoreCrashReports,
@@ -17,12 +15,18 @@ describe('crashReportsUtils', () => {
   it('formats the value', () => {
     expect(formatStoreCrashReports(-1)).toBe('Unlimited');
     expect(formatStoreCrashReports(0)).toBe('Disabled');
-    expect(shallow(<div>{formatStoreCrashReports(10)}</div>).text()).toBe('10 per issue');
-    expect(shallow(<div>{formatStoreCrashReports(null, 5)}</div>).text()).toBe(
-      'Inherit organization settings (5 per issue)'
+
+    const {container: container1} = render(<div>{formatStoreCrashReports(10)}</div>);
+    expect(container1.textContent).toBe('10 per issue');
+
+    const {container: container2} = render(
+      <div>{formatStoreCrashReports(null, 5)}</div>
     );
-    expect(shallow(<div>{formatStoreCrashReports(null, 0)}</div>).text()).toBe(
-      'Inherit organization settings (Disabled)'
+    expect(container2.textContent).toBe('Inherit organization settings (5 per issue)');
+
+    const {container: container3} = render(
+      <div>{formatStoreCrashReports(null, 0)}</div>
     );
+    expect(container3.textContent).toBe('Inherit organization settings (Disabled)');
   });
 });
