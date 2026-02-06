@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen, fireEvent, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'app/api';
 import AccountEmails from 'app/views/settings/account/accountEmails';
@@ -18,25 +18,36 @@ describe('AccountEmails', function () {
     });
   });
 
-  it('renders with emails', function () {
-    const wrapper = mountWithTheme(<AccountEmails />, TestStubs.routerContext());
+  it('renders with emails', async function () {
+    const {container} = render(<AccountEmails />, {context: TestStubs.routerContext()});
 
-    expect(wrapper).toSnapshot();
+    // Wait for emails to load
+    await waitFor(() => {
+      expect(screen.getByText('primary@example.com')).toBeInTheDocument();
+    });
+
+    expect(container).toMatchSnapshot();
   });
 
-  it('can remove an email', function () {
+  it('can remove an email', async function () {
     const mock = Client.addMockResponse({
       url: ENDPOINT,
       method: 'DELETE',
       statusCode: 200,
     });
 
-    const wrapper = mountWithTheme(<AccountEmails />, TestStubs.routerContext());
+    render(<AccountEmails />, {context: TestStubs.routerContext()});
+
+    // Wait for emails to load
+    await waitFor(() => {
+      expect(screen.getByText('primary@example.com')).toBeInTheDocument();
+    });
 
     expect(mock).not.toHaveBeenCalled();
 
     // The first Button should be delete button for first secondary email (NOT primary)
-    wrapper.find('[data-test-id="remove"]').at(1).simulate('click');
+    const removeButtons = screen.getAllByTestId('remove');
+    fireEvent.click(removeButtons[1]);
 
     expect(mock).toHaveBeenCalledWith(
       ENDPOINT,
@@ -49,19 +60,25 @@ describe('AccountEmails', function () {
     );
   });
 
-  it('can change a secondary email to primary an email', function () {
+  it('can change a secondary email to primary an email', async function () {
     const mock = Client.addMockResponse({
       url: ENDPOINT,
       method: 'PUT',
       statusCode: 200,
     });
 
-    const wrapper = mountWithTheme(<AccountEmails />, TestStubs.routerContext());
+    render(<AccountEmails />, {context: TestStubs.routerContext()});
+
+    // Wait for emails to load
+    await waitFor(() => {
+      expect(screen.getByText('primary@example.com')).toBeInTheDocument();
+    });
 
     expect(mock).not.toHaveBeenCalled();
 
     // The first Button should be delete button for first secondary email (NOT primary)
-    wrapper.find('Button[children="Set as primary"]').first().simulate('click');
+    const setPrimaryButton = screen.getAllByRole('button', {name: 'Set as primary'})[0];
+    fireEvent.click(setPrimaryButton);
 
     expect(mock).toHaveBeenCalledWith(
       ENDPOINT,
@@ -74,18 +91,24 @@ describe('AccountEmails', function () {
     );
   });
 
-  it('can resend verification email', function () {
+  it('can resend verification email', async function () {
     const mock = Client.addMockResponse({
       url: `${ENDPOINT}confirm/`,
       method: 'POST',
       statusCode: 200,
     });
 
-    const wrapper = mountWithTheme(<AccountEmails />, TestStubs.routerContext());
+    render(<AccountEmails />, {context: TestStubs.routerContext()});
+
+    // Wait for emails to load
+    await waitFor(() => {
+      expect(screen.getByText('primary@example.com')).toBeInTheDocument();
+    });
 
     expect(mock).not.toHaveBeenCalled();
 
-    wrapper.find('Button[children="Resend verification"]').simulate('click');
+    const resendButton = screen.getByRole('button', {name: 'Resend verification'});
+    fireEvent.click(resendButton);
 
     expect(mock).toHaveBeenCalledWith(
       `${ENDPOINT}confirm/`,
@@ -98,21 +121,24 @@ describe('AccountEmails', function () {
     );
   });
 
-  it('can add a secondary email', function () {
+  it('can add a secondary email', async function () {
     const mock = Client.addMockResponse({
       url: ENDPOINT,
       method: 'POST',
       statusCode: 200,
     });
-    const wrapper = mountWithTheme(<AccountEmails />, TestStubs.routerContext());
+    render(<AccountEmails />, {context: TestStubs.routerContext()});
+
+    // Wait for emails to load
+    await waitFor(() => {
+      expect(screen.getByText('primary@example.com')).toBeInTheDocument();
+    });
 
     expect(mock).not.toHaveBeenCalled();
 
-    wrapper
-      .find('input')
-      .first()
-      .simulate('change', {target: {value: 'test@example.com'}})
-      .simulate('blur');
+    const emailInput = screen.getByRole('textbox', {name: /email/i});
+    fireEvent.change(emailInput, {target: {value: 'test@example.com'}});
+    fireEvent.blur(emailInput);
 
     expect(mock).toHaveBeenCalledWith(
       ENDPOINT,

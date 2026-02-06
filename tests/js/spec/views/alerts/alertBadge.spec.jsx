@@ -1,23 +1,21 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen} from 'sentry-test/reactTestingLibrary';
 
 import AlertBadge from 'app/views/alerts/alertBadge';
 import {IncidentStatus} from 'app/views/alerts/types';
 
 describe('AlertBadge', function () {
   it('displays status', function () {
-    const wrapper = mountWithTheme(<AlertBadge status={IncidentStatus.CLOSED} />);
-    expect(wrapper.text()).toBe('Resolved');
+    render(<AlertBadge status={IncidentStatus.CLOSED} />);
+    expect(screen.getByText('Resolved')).toBeInTheDocument();
   });
   it('hides status text', function () {
-    const wrapper = mountWithTheme(
-      <AlertBadge hideText status={IncidentStatus.CLOSED} />
-    );
-    expect(wrapper.text()).toBe('');
+    const {container} = render(<AlertBadge hideText status={IncidentStatus.CLOSED} />);
+    expect(container).toHaveTextContent('');
   });
   it('can be an issue badge', function () {
-    const wrapper = mountWithTheme(<AlertBadge hideText isIssue />);
-    expect(wrapper.text()).toBe('');
+    const {container} = render(<AlertBadge hideText isIssue />);
+    expect(container).toHaveTextContent('');
   });
 });

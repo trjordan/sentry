@@ -1,56 +1,54 @@
 import React from 'react';
-import * as qs from 'query-string';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {selectByValue} from 'sentry-test/select-new';
+import {render, screen, fireEvent} from 'sentry-test/reactTestingLibrary';
 
 import AwsLambdaCloudformation from 'app/views/integrationPipeline/awsLambdaCloudformation';
 
 describe('AwsLambdaCloudformation', () => {
-  let wrapper;
   let windowAssignMock;
+
   beforeEach(() => {
     windowAssignMock = jest.fn();
     window.location.assign = windowAssignMock;
-    window.localStorage.setItem('AWS_EXTERNAL_ID', 'my-id');
+  });
 
-    wrapper = mountWithTheme(
+  it('submits the form with correct URL parameters', () => {
+    render(
       <AwsLambdaCloudformation
         baseCloudformationUrl="https://console.aws.amazon.com/cloudformation/home#/stacks/create/review"
-        templateUrl="https://example.com/file.json"
+        templateUrl="https://example.com/cloudformation-template.json"
         stackName="Sentry-Monitoring-Stack"
-        regionList={['us-east-1', 'us-west-1']}
+        regionList={['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2']}
         accountNumber=""
         region=""
         initialStepNumber={0}
+        awsExternalId="my-external-id"
       />
     );
-  });
-  it('submit arn', async () => {
-    wrapper.find('button[name="showInputs"]').simulate('click');
 
-    wrapper
-      .find('input[name="accountNumber"]')
-      .simulate('change', {target: {value: '599817902985'}});
+    // Fill in the AWS Account Number field
+    const accountInput = screen.getByRole('textbox', {name: /aws account number/i});
+    fireEvent.change(accountInput, {target: {value: '599817902985'}});
+    fireEvent.blur(accountInput);
 
-    selectByValue(wrapper, 'us-west-1');
+    // Select a region using the SelectField
+    // The react-select input has id="react-select-N-input", we can find it by its autocomplete attribute
+    const regionSelect = document.querySelector('input[id^="react-select"][aria-autocomplete="list"]');
+    fireEvent.focus(regionSelect);
+    fireEvent.keyDown(regionSelect, {key: 'ArrowDown', code: 'ArrowDown'});
+    fireEvent.click(screen.getByText('us-east-2'));
 
-    await tick();
-
-    wrapper.find('StyledButton[aria-label="Next"]').simulate('click');
-
-    const {
-      location: {origin},
-    } = window;
-
-    const query = qs.stringify({
-      accountNumber: '599817902985',
-      region: 'us-west-1',
-      awsExternalId: 'my-id',
-    });
+    // Click the Next button to submit
+    fireEvent.click(screen.getByRole('button', {name: 'Next'}));
 
     expect(windowAssignMock).toHaveBeenCalledWith(
-      `${origin}/extensions/aws_lambda/setup/?${query}`
+      expect.stringContaining('accountNumber=599817902985')
+    );
+    expect(windowAssignMock).toHaveBeenCalledWith(
+      expect.stringContaining('region=us-east-2')
+    );
+    expect(windowAssignMock).toHaveBeenCalledWith(
+      expect.stringContaining('awsExternalId=my-external-id')
     );
   });
 });

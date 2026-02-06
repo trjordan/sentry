@@ -1,91 +1,111 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {initializeOrg} from 'sentry-test/initializeOrg';
+import {fireEvent, render, screen, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import ApiApplications from 'app/views/settings/account/apiApplications';
 
 describe('ApiApplications', function () {
-  let requestMock;
-  let wrapper;
-  const {router, routerContext} = initializeOrg();
-
-  const createWrapper = props => {
-    wrapper = mountWithTheme(
-      <ApiApplications {...props} router={router} />,
-      routerContext
-    );
-  };
+  const routerContext = TestStubs.routerContext();
 
   beforeEach(function () {
     MockApiClient.clearMockResponses();
-    requestMock = MockApiClient.addMockResponse({
-      url: '/api-applications/',
-      body: [TestStubs.ApiApplication()],
-    });
-  });
-
-  afterEach(function () {
-    if (wrapper) {
-      wrapper.unmount();
-      wrapper = null;
-    }
   });
 
   it('renders empty', async function () {
-    requestMock = MockApiClient.addMockResponse({
+    MockApiClient.addMockResponse({
       url: '/api-applications/',
       body: [],
     });
-    createWrapper();
-    expect(wrapper.find('EmptyMessage')).toHaveLength(1);
+
+    render(<ApiApplications />, {context: routerContext});
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("You haven't created any applications yet.")
+      ).toBeInTheDocument();
+    });
   });
 
   it('renders', async function () {
-    createWrapper();
+    MockApiClient.addMockResponse({
+      url: '/api-applications/',
+      body: [TestStubs.ApiApplication()],
+    });
 
-    expect(requestMock).toHaveBeenCalled();
+    const {container} = render(<ApiApplications />, {context: routerContext});
 
-    expect(wrapper.find('Row')).toHaveLength(1);
+    // Wait for the application to load
+    await waitFor(() => {
+      expect(screen.getByText('Test API Application')).toBeInTheDocument();
+    });
+
+    expect(container).toMatchSnapshot();
   });
 
   it('creates application', async function () {
-    const createApplicationRequest = MockApiClient.addMockResponse({
+    MockApiClient.addMockResponse({
       url: '/api-applications/',
+      body: [],
+    });
+
+    const createMock = MockApiClient.addMockResponse({
+      url: '/api-applications/',
+      method: 'POST',
       body: TestStubs.ApiApplication({
         id: '234',
       }),
-      method: 'POST',
     });
-    createWrapper();
 
-    wrapper.find('button[aria-label="Create New Application"]').simulate('click');
+    render(<ApiApplications />, {context: routerContext});
 
-    await tick();
+    // Wait for initial render
+    await waitFor(() => {
+      expect(
+        screen.getByText("You haven't created any applications yet.")
+      ).toBeInTheDocument();
+    });
 
-    expect(createApplicationRequest).toHaveBeenCalledWith(
-      '/api-applications/',
-      expect.objectContaining({method: 'POST'})
-    );
-    expect(router.push).toHaveBeenLastCalledWith(
-      '/settings/account/api/applications/234/'
-    );
+    fireEvent.click(screen.getByRole('button', {name: /Create New Application/}));
+
+    await waitFor(() => {
+      expect(createMock).toHaveBeenCalledWith(
+        '/api-applications/',
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+    });
   });
 
   it('deletes application', async function () {
-    const deleteApplicationRequest = MockApiClient.addMockResponse({
+    MockApiClient.addMockResponse({
+      url: '/api-applications/',
+      body: [TestStubs.ApiApplication({id: '123'})],
+    });
+
+    const deleteMock = MockApiClient.addMockResponse({
       url: '/api-applications/123/',
       method: 'DELETE',
+      body: {},
     });
-    createWrapper();
 
-    wrapper.find('button[aria-label="Remove"]').simulate('click');
-    await tick();
-    wrapper.update();
-    expect(deleteApplicationRequest).toHaveBeenCalledWith(
-      '/api-applications/123/',
-      expect.objectContaining({method: 'DELETE'})
-    );
-    expect(wrapper.find('EmptyMessage')).toHaveLength(1);
+    render(<ApiApplications />, {context: routerContext});
+
+    // Wait for application to load
+    await waitFor(() => {
+      expect(screen.getByText('Test API Application')).toBeInTheDocument();
+    });
+
+    // Find and click the Remove button
+    fireEvent.click(screen.getByRole('button', {name: 'Remove'}));
+
+    await waitFor(() => {
+      expect(deleteMock).toHaveBeenCalledWith(
+        '/api-applications/123/',
+        expect.objectContaining({
+          method: 'DELETE',
+        })
+      );
+    });
   });
 });

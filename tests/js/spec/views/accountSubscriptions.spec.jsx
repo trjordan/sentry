@@ -1,5 +1,4 @@
-import {render, screen} from 'sentry-test/reactTestingLibrary';
-import userEvent from '@testing-library/user-event';
+import {fireEvent, render, screen} from 'sentry-test/reactTestingLibrary';
 
 import {Client} from 'app/api';
 import AccountSubscriptions from 'app/views/settings/account/accountSubscriptions';
@@ -21,7 +20,7 @@ describe('AccountSubscriptions', function () {
     expect(container).toMatchSnapshot();
   });
 
-  it('renders list and can toggle', async function () {
+  it('renders list and can toggle', function () {
     Client.addMockResponse({
       url: ENDPOINT,
       body: TestStubs.Subscriptions(),
@@ -38,7 +37,7 @@ describe('AccountSubscriptions', function () {
     expect(mock).not.toHaveBeenCalled();
 
     const switches = screen.getAllByRole('checkbox');
-    await userEvent.click(switches[0]);
+    fireEvent.click(switches[0]);
 
     expect(mock).toHaveBeenCalledWith(
       ENDPOINT,

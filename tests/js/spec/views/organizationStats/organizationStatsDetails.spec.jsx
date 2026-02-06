@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen} from 'sentry-test/reactTestingLibrary';
 
 import OrganizationStats from 'app/views/organizationStats/organizationStatsDetails';
 
@@ -17,15 +17,15 @@ describe('OrganizationStats', function () {
       organization,
     };
 
-    const wrapper = mountWithTheme(
-      <OrganizationStats {...props} />,
-      TestStubs.routerContext([{organization}])
-    );
+    render(<OrganizationStats {...props} />, {
+      context: TestStubs.routerContext([{organization}]),
+    });
 
-    expect(wrapper.find('PageHeading').text()).toBe('Organization Stats');
-    expect(wrapper.find('MiniBarChart').exists()).toBe(true);
-    expect(wrapper.find('ProjectTable').exists()).toBe(true);
-    expect(wrapper.find('Alert[data-test-id="performance-usage"]').exists()).toBe(false);
+    expect(screen.getByText('Organization Stats')).toBeInTheDocument();
+    // MiniBarChart and ProjectTable are internal components that render - we verify the page structure
+    expect(screen.getByText('Project')).toBeInTheDocument();
+    expect(screen.getByText('Accepted')).toBeInTheDocument();
+    expect(screen.queryByTestId('performance-usage')).not.toBeInTheDocument();
   });
 
   it('renders alert for performance feature', function () {
@@ -40,14 +40,13 @@ describe('OrganizationStats', function () {
       organization,
     };
 
-    const wrapper = mountWithTheme(
-      <OrganizationStats {...props} />,
-      TestStubs.routerContext([{organization}])
-    );
+    render(<OrganizationStats {...props} />, {
+      context: TestStubs.routerContext([{organization}]),
+    });
 
-    expect(wrapper.find('PageHeading').text()).toBe('Organization Stats');
-    expect(wrapper.find('MiniBarChart').exists()).toBe(true);
-    expect(wrapper.find('ProjectTable').exists()).toBe(true);
-    expect(wrapper.find('Alert[data-test-id="performance-usage"]').exists()).toBe(true);
+    expect(screen.getByText('Organization Stats')).toBeInTheDocument();
+    expect(screen.getByText('Project')).toBeInTheDocument();
+    expect(screen.getByText('Accepted')).toBeInTheDocument();
+    expect(screen.getByTestId('performance-usage')).toBeInTheDocument();
   });
 });

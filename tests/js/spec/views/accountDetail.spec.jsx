@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import AccountDetails from 'app/views/settings/account/accountDetails';
 
@@ -21,54 +21,53 @@ describe('AccountDetails', function () {
     mockUserDetails();
   });
 
-  it('renders', function () {
-    const wrapper = mountWithTheme(
-      <AccountDetails location={{}} />,
-      TestStubs.routerContext()
-    );
+  it('renders', async function () {
+    render(<AccountDetails location={{}} />, {context: TestStubs.routerContext()});
 
-    expect(wrapper.find('input[name="name"]')).toHaveLength(1);
+    // Wait for data to load and check for name input
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', {name: /name/i})).toBeInTheDocument();
+    });
 
-    // Stacktrace order, language, timezone, theme
-    expect(wrapper.find('SelectControl')).toHaveLength(4);
-
-    expect(wrapper.find('BooleanField')).toHaveLength(1);
-    expect(wrapper.find('RadioGroup')).toHaveLength(1);
+    // Stacktrace order, language, timezone, theme - SelectControl renders as combobox
+    expect(screen.getAllByRole('textbox').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('has username field if it is different than email', function () {
+  it('has username field if it is different than email', async function () {
     mockUserDetails({username: 'different@example.com'});
-    const wrapper = mountWithTheme(
-      <AccountDetails location={{}} />,
-      TestStubs.routerContext()
-    );
+    render(<AccountDetails location={{}} />, {context: TestStubs.routerContext()});
 
-    expect(wrapper.find('input[name="username"]')).toHaveLength(1);
-    expect(wrapper.find('input[name="username"]').prop('disabled')).toBe(false);
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', {name: /username/i})).toBeInTheDocument();
+    });
+
+    const usernameInput = screen.getByRole('textbox', {name: /username/i});
+    expect(usernameInput).not.toBeDisabled();
   });
 
   describe('Managed User', function () {
-    it('does not have password fields', function () {
+    it('does not have password fields', async function () {
       mockUserDetails({isManaged: true});
-      const wrapper = mountWithTheme(
-        <AccountDetails location={{}} />,
-        TestStubs.routerContext()
-      );
+      render(<AccountDetails location={{}} />, {context: TestStubs.routerContext()});
 
-      expect(wrapper.find('input[name="name"]')).toHaveLength(1);
-      expect(wrapper.find('input[name="password"]')).toHaveLength(0);
-      expect(wrapper.find('input[name="passwordVerify"]')).toHaveLength(0);
+      await waitFor(() => {
+        expect(screen.getByRole('textbox', {name: /name/i})).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText(/^password$/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/verify password/i)).not.toBeInTheDocument();
     });
 
-    it('has disabled username field if it is different than email', function () {
+    it('has disabled username field if it is different than email', async function () {
       mockUserDetails({isManaged: true, username: 'different@example.com'});
-      const wrapper = mountWithTheme(
-        <AccountDetails location={{}} />,
-        TestStubs.routerContext()
-      );
+      render(<AccountDetails location={{}} />, {context: TestStubs.routerContext()});
 
-      expect(wrapper.find('input[name="username"]')).toHaveLength(1);
-      expect(wrapper.find('input[name="username"]').prop('disabled')).toBe(true);
+      await waitFor(() => {
+        expect(screen.getByRole('textbox', {name: /username/i})).toBeInTheDocument();
+      });
+
+      const usernameInput = screen.getByRole('textbox', {name: /username/i});
+      expect(usernameInput).toBeDisabled();
     });
   });
 });

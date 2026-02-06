@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render} from 'sentry-test/reactTestingLibrary';
 
 import AdminBuffer from 'app/views/admin/adminBuffer';
 
@@ -9,12 +9,8 @@ import AdminBuffer from 'app/views/admin/adminBuffer';
 describe('AdminBuffer', function () {
   describe('render()', function () {
     it('renders', function () {
-      const wrapper = mountWithTheme(<AdminBuffer params={{}} />, {
-        context: {
-          router: TestStubs.router(),
-        },
-      });
-      expect(wrapper).toSnapshot();
+      const {container} = render(<AdminBuffer params={{}} />);
+      expect(container.firstChild).toMatchSnapshot();
     });
   });
 });

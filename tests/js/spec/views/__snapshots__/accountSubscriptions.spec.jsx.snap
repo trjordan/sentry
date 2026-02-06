@@ -1,0 +1,254 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`AccountSubscriptions renders empty 1`] = `
+<div>
+  <div>
+    <div
+      class="css-q8xgg6-SettingsPageHeader e1nr98yc2"
+    >
+      <div
+        class="css-1mfa9vw-TitleAndActions e1nr98yc8"
+      >
+        <div
+          class="css-u3au9h-TitleWrapper e1nr98yc7"
+        >
+          <div
+            class="css-18xqiae-Title e1nr98yc6"
+          >
+            <h4
+              class="css-fcvkez-HeaderTitle e12cn1y20"
+            >
+              Subscriptions
+            </h4>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="css-1j3tvli-TextBlock ezm48a60"
+    >
+      Sentry is committed to respecting your inbox. Our goal is to
+              provide useful content and resources that make fixing errors less
+              painful. Enjoyable even.
+    </div>
+    <div
+      class="css-1j3tvli-TextBlock ezm48a60"
+    >
+      As part of our compliance with the EU’s General Data Protection
+              Regulation (GDPR), starting on 25 May 2018, we’ll only email you
+              according to the marketing categories to which you’ve explicitly
+              opted-in.
+    </div>
+    <div
+      class="css-1x7ld2l-Panel edxrl2k0"
+    >
+      <div
+        class="css-11026hi-EmptyMessage-EmptyMessage e1k0g72g4"
+        data-test-id="empty-message"
+      >
+        <div
+          class="css-u2uxsp-TextBlock-Description e1k0g72g1"
+        >
+          There's no subscription backend present.
+        </div>
+      </div>
+    </div>
+    <div
+      class="css-1j3tvli-TextBlock ezm48a60"
+    >
+      We’re applying GDPR consent and privacy policies to all Sentry
+              contacts, regardless of location. You’ll be able to manage your
+              subscriptions here and from an Unsubscribe link in the footer of
+              all marketing emails.
+    </div>
+    <div
+      class="css-1j3tvli-TextBlock ezm48a60"
+    >
+      <span>
+        <span>
+          Please contact 
+        </span>
+        <a
+          href="mailto:learn@sentry.io"
+        >
+          <span>
+            learn@sentry.io
+          </span>
+        </a>
+        <span>
+           with any questions or suggestions.
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`AccountSubscriptions renders list and can toggle 1`] = `
+<div>
+  <div>
+    <div
+      class="css-q8xgg6-SettingsPageHeader e1nr98yc2"
+    >
+      <div
+        class="css-1mfa9vw-TitleAndActions e1nr98yc8"
+      >
+        <div
+          class="css-u3au9h-TitleWrapper e1nr98yc7"
+        >
+          <div
+            class="css-18xqiae-Title e1nr98yc6"
+          >
+            <h4
+              class="css-fcvkez-HeaderTitle e12cn1y20"
+            >
+              Subscriptions
+            </h4>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="css-1j3tvli-TextBlock ezm48a60"
+    >
+      Sentry is committed to respecting your inbox. Our goal is to
+              provide useful content and resources that make fixing errors less
+              painful. Enjoyable even.
+    </div>
+    <div
+      class="css-1j3tvli-TextBlock ezm48a60"
+    >
+      As part of our compliance with the EU’s General Data Protection
+              Regulation (GDPR), starting on 25 May 2018, we’ll only email you
+              according to the marketing categories to which you’ve explicitly
+              opted-in.
+    </div>
+    <div
+      class="css-1x7ld2l-Panel edxrl2k0"
+    >
+      <div>
+        <div
+          class="css-nrfibd-PanelHeader-getPadding eknsyxy0"
+        >
+          Subscription
+        </div>
+        <div
+          class="css-pemm1r-PanelBody-textStyles eszvord0"
+        >
+          <div
+            class="css-1sru5vc-PanelItem elsgeq40"
+          >
+            <div
+              class="css-f7qdjq-SubscriptionDetails e1lg29ww3"
+            >
+              <div
+                class="css-dvhern-SubscriptionName e1lg29ww2"
+              >
+                Product & Feature Updates
+              </div>
+              <div
+                class="css-tv96t7-Description e1lg29ww1"
+              >
+                Everything you need to know about Sentry features, integrations, partnerships, and launches.
+              </div>
+              <div
+                class="css-1spyj7s-Description-SubscribedDescription e1lg29ww0"
+              >
+                <div>
+                  <span>
+                    <span>
+                      test@sentry.io
+                    </span>
+                    <span>
+                       on 
+                    </span>
+                    <time>
+                      01/08/2018
+                    </time>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <button
+                aria-checked="true"
+                class="css-184vydp-SwitchButton ep74ita1"
+                data-test-id="switch"
+                role="checkbox"
+                type="button"
+              >
+                <span
+                  class="css-7d185m-Toggle ep74ita0"
+                />
+              </button>
+            </div>
+          </div>
+          <div
+            class="css-1sru5vc-PanelItem elsgeq40"
+          >
+            <div
+              class="css-f7qdjq-SubscriptionDetails e1lg29ww3"
+            >
+              <div
+                class="css-dvhern-SubscriptionName e1lg29ww2"
+              >
+                Sentry Newsletter
+              </div>
+              <div
+                class="css-tv96t7-Description e1lg29ww1"
+              >
+                Our monthly update on what's new with Sentry and the community.
+              </div>
+              <div
+                class="css-1spyj7s-Description-SubscribedDescription e1lg29ww0"
+              >
+                Not currently subscribed
+              </div>
+            </div>
+            <div>
+              <button
+                aria-checked="false"
+                class="css-184vydp-SwitchButton ep74ita1"
+                data-test-id="switch"
+                role="checkbox"
+                type="button"
+              >
+                <span
+                  class="css-1wbwbmn-Toggle ep74ita0"
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div
+      class="css-1j3tvli-TextBlock ezm48a60"
+    >
+      We’re applying GDPR consent and privacy policies to all Sentry
+              contacts, regardless of location. You’ll be able to manage your
+              subscriptions here and from an Unsubscribe link in the footer of
+              all marketing emails.
+    </div>
+    <div
+      class="css-1j3tvli-TextBlock ezm48a60"
+    >
+      <span>
+        <span>
+          Please contact 
+        </span>
+        <a
+          href="mailto:learn@sentry.io"
+        >
+          <span>
+            learn@sentry.io
+          </span>
+        </a>
+        <span>
+           with any questions or suggestions.
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+`;

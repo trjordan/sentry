@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen, fireEvent, waitFor} from 'sentry-test/reactTestingLibrary';
 import {mountGlobalModal} from 'sentry-test/modal';
 
 import AccountClose from 'app/views/settings/account/accountClose';
@@ -34,28 +34,31 @@ describe('AccountClose', function () {
   });
 
   it('lists all orgs user is an owner of', async function () {
-    const wrapper = mountWithTheme(<AccountClose />, TestStubs.routerContext());
+    render(<AccountClose />, {context: TestStubs.routerContext()});
+
+    // Wait for the component to load data
+    await waitFor(() => {
+      expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+    });
+
+    const checkboxes = screen.getAllByRole('checkbox');
 
     // Input for single owner org
-    expect(wrapper.find('input').first().prop('checked')).toBe(true);
-    expect(wrapper.find('input').first().prop('disabled')).toBe(true);
+    expect(checkboxes[0]).toBeChecked();
+    expect(checkboxes[0]).toBeDisabled();
 
     // Input for non-single-owner org
-    expect(wrapper.find('input').at(1).prop('checked')).toBe(false);
-    expect(wrapper.find('input').at(1).prop('disabled')).toBe(false);
+    expect(checkboxes[1]).not.toBeChecked();
+    expect(checkboxes[1]).not.toBeDisabled();
 
     // Can check 2nd org
-    wrapper
-      .find('input')
-      .at(1)
-      .simulate('change', {target: {checked: true}});
+    fireEvent.click(checkboxes[1]);
 
-    wrapper.update();
+    expect(checkboxes[1]).toBeChecked();
 
-    expect(wrapper.find('input').at(1).prop('checked')).toBe(true);
-
-    // Delete
-    wrapper.find('Confirm Button').simulate('click');
+    // Delete - find the button that opens confirmation
+    const deleteButton = screen.getByRole('button', {name: /close account/i});
+    fireEvent.click(deleteButton);
 
     // First button is cancel, target Button at index 2
     const modal = await mountGlobalModal();
