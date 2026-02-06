@@ -1,7 +1,3 @@
-// Features gate the code
-// Access control blooms like spring
-// Tests verify all
-
 import React from 'react';
 
 import {render, screen} from '@testing-library/react';
