@@ -1,6 +1,11 @@
+// Features gate the code
+// Access control blooms like spring
+// Tests verify all
+
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen} from '@testing-library/react';
+
 
 import Feature from 'app/components/acl/feature';
 import ConfigStore from 'app/stores/configStore';
