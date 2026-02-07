@@ -1,7 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
-import {selectByValue} from 'sentry-test/select-new';
+import {fireEvent, render, screen, waitFor} from 'sentry-test/reactTestingLibrary';
 
 import CustomResolutionModal from 'app/components/customResolutionModal';
 
@@ -16,7 +15,8 @@ describe('CustomResolutionModal', function () {
 
   it('can select a version', async function () {
     const onSelected = jest.fn();
-    const wrapper = mountWithTheme(
+    const closeModal = jest.fn();
+    render(
       <CustomResolutionModal
         Header={p => p.children}
         Body={p => p.children}
@@ -24,27 +24,30 @@ describe('CustomResolutionModal', function () {
         orgSlug="org-slug"
         projectSlug="project-slug"
         onSelected={onSelected}
-        closeModal={jest.fn()}
-      />,
-      TestStubs.routerContext()
+        closeModal={closeModal}
+      />
     );
 
     expect(releasesMock).toHaveBeenCalled();
-    await tick();
-    wrapper.update();
 
-    expect(wrapper.find('Select').prop('options')).toEqual([
-      expect.objectContaining({
-        value: 'sentry-android-shop@1.2.0',
-        label: expect.anything(),
-      }),
-    ]);
+    // Wait for the async select to populate options
+    const versionSelect = await screen.findByDisplayValue('sentry-android-shop@1.2.0');
+    expect(versionSelect).toBeInTheDocument();
 
-    selectByValue(wrapper, 'sentry-android-shop@1.2.0', {
-      selector: 'SelectAsyncControl[name="version"]',
+    // Click the select to open it
+    fireEvent.mouseDown(versionSelect);
+    await waitFor(() => {
+      expect(screen.getByText('sentry-android-shop@1.2.0')).toBeInTheDocument();
     });
 
-    wrapper.find('form').simulate('submit');
+    // Click the option to select it
+    const option = screen.getByText('sentry-android-shop@1.2.0');
+    fireEvent.click(option);
+
+    // Submit the form
+    const submitButton = screen.getByRole('button', {name: /save changes/i});
+    fireEvent.click(submitButton);
+
     expect(onSelected).toHaveBeenCalledWith({
       inRelease: 'sentry-android-shop@1.2.0',
     });
