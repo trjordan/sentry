@@ -4,6 +4,15 @@ import {fireEvent, render, screen, waitFor} from 'sentry-test/reactTestingLibrar
 
 import CustomResolutionModal from 'app/components/customResolutionModal';
 
+// Polyfill MutationObserver for older jsdom
+if (typeof MutationObserver === 'undefined') {
+  global.MutationObserver = class {
+    constructor(callback) {}
+    disconnect() {}
+    observe() {}
+  };
+}
+
 describe('CustomResolutionModal', function () {
   let releasesMock;
   beforeEach(function () {
@@ -16,7 +25,7 @@ describe('CustomResolutionModal', function () {
   it('can select a version', async function () {
     const onSelected = jest.fn();
     const closeModal = jest.fn();
-    render(
+    const {container} = render(
       <CustomResolutionModal
         Header={p => p.children}
         Body={p => p.children}
@@ -30,19 +39,30 @@ describe('CustomResolutionModal', function () {
 
     expect(releasesMock).toHaveBeenCalled();
 
-    // Wait for the async select to populate options
-    const versionSelect = await screen.findByDisplayValue('sentry-android-shop@1.2.0');
-    expect(versionSelect).toBeInTheDocument();
-
-    // Click the select to open it
-    fireEvent.mouseDown(versionSelect);
+    // Wait for the async select to load - find the input (react-select creates its own input)
     await waitFor(() => {
-      expect(screen.getByText('sentry-android-shop@1.2.0')).toBeInTheDocument();
+      const input = container.querySelector('input[aria-autocomplete="list"]');
+      expect(input).toBeInTheDocument();
     });
 
+    const input = container.querySelector('input[aria-autocomplete="list"]');
+
+    // Open the select by clicking/focusing the input
+    fireEvent.mouseDown(input);
+    fireEvent.focus(input);
+
+    // Wait for the option to appear in the dropdown
+    // The VersionOption component displays the version in bold, so search for the version number
+    const option = await screen.findByText('1.2.0');
+    expect(option).toBeInTheDocument();
+
     // Click the option to select it
-    const option = screen.getByText('sentry-android-shop@1.2.0');
     fireEvent.click(option);
+
+    // Verify the value was selected
+    await waitFor(() => {
+      expect(input).toHaveDisplayValue('sentry-android-shop@1.2.0');
+    });
 
     // Submit the form
     const submitButton = screen.getByRole('button', {name: /save changes/i});
