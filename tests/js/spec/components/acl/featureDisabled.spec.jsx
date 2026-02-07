@@ -1,95 +1,77 @@
 import React from 'react';
 
-import {cache} from '@emotion/css'; // eslint-disable-line emotion/no-vanilla
-import {CacheProvider, ThemeProvider} from '@emotion/react';
-import {fireEvent, render, screen} from '@testing-library/react';
+import {mountWithTheme} from 'sentry-test/enzyme';
 
 import FeatureDisabled from 'app/components/acl/featureDisabled';
 import {PanelAlert} from 'app/components/panels';
-import {lightTheme} from 'app/utils/theme';
-
-function TestProviders({children}) {
-  return (
-    <CacheProvider value={cache}>
-      <ThemeProvider theme={lightTheme}>{children}</ThemeProvider>
-    </CacheProvider>
-  );
-}
 
 describe('FeatureDisabled', function () {
   it('renders', function () {
-    render(
-      <TestProviders>
-        <FeatureDisabled
-          features={['organization:my-features']}
-          featureName="Some Feature"
-        />
-      </TestProviders>
+    const wrapper = mountWithTheme(
+      <FeatureDisabled
+        features={['organization:my-features']}
+        featureName="Some Feature"
+      />
     );
 
-    expect(screen.getByText(/This feature is not enabled on your Sentry installation/)).toBeInTheDocument();
-    expect(screen.getByRole('button', {name: /Help/i})).toBeInTheDocument();
+    expect(wrapper.text()).toContain('This feature is not enabled on your Sentry installation');
+    expect(wrapper.find('button').text()).toContain('Help');
   });
 
   it('renders with custom message', function () {
     const customMessage = 'custom message';
-    render(
-      <TestProviders>
-        <FeatureDisabled
-          message={customMessage}
-          features={['organization:my-features']}
-          featureName="Some Feature"
-        />
-      </TestProviders>
+    const wrapper = mountWithTheme(
+      <FeatureDisabled
+        message={customMessage}
+        features={['organization:my-features']}
+        featureName="Some Feature"
+      />
     );
 
-    expect(screen.getByText(customMessage)).toBeInTheDocument();
+    expect(wrapper.text()).toContain(customMessage);
   });
 
   it('renders as an Alert', function () {
-    const {container} = render(
-      <TestProviders>
-        <FeatureDisabled
-          alert
-          features={['organization:my-features']}
-          featureName="Some Feature"
-        />
-      </TestProviders>
+    const wrapper = mountWithTheme(
+      <FeatureDisabled
+        alert
+        features={['organization:my-features']}
+        featureName="Some Feature"
+      />
     );
 
     // Alert renders with a ref-warning class
-    expect(container.querySelector('.ref-warning')).toBeInTheDocument();
+    expect(wrapper.find('.ref-warning')).toHaveLength(1);
   });
 
   it('renders with custom alert component', function () {
-    const {container} = render(
-      <TestProviders>
-        <FeatureDisabled
-          alert={PanelAlert}
-          features={['organization:my-features']}
-          featureName="Some Feature"
-        />
-      </TestProviders>
+    const wrapper = mountWithTheme(
+      <FeatureDisabled
+        alert={PanelAlert}
+        features={['organization:my-features']}
+        featureName="Some Feature"
+      />
     );
 
     // PanelAlert renders with a ref-warning class (inherits from Alert)
-    expect(container.querySelector('.ref-warning')).toBeInTheDocument();
+    expect(wrapper.find('.ref-warning')).toHaveLength(1);
   });
 
   it('displays instructions when help is clicked', function () {
-    render(
-      <TestProviders>
-        <FeatureDisabled
-          alert
-          features={['organization:my-features']}
-          featureName="Some Feature"
-        />
-      </TestProviders>
+    const wrapper = mountWithTheme(
+      <FeatureDisabled
+        alert
+        features={['organization:my-features']}
+        featureName="Some Feature"
+      />
     );
 
-    const helpButton = screen.getByRole('button', {name: /Help/i});
-    fireEvent.click(helpButton);
+    const helpButton = wrapper.find('button').filter((node) =>
+      node.text().includes('Help')
+    );
+    helpButton.simulate('click');
+    wrapper.update();
 
-    expect(screen.getByText(/Enable this feature on your sentry installation/)).toBeInTheDocument();
+    expect(wrapper.text()).toContain('Enable this feature on your sentry installation');
   });
 });
