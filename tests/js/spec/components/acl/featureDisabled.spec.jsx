@@ -1,26 +1,27 @@
 import React from 'react';
+import userEvent from '@testing-library/user-event';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render, screen} from 'sentry-test/reactTestingLibrary';
 
 import FeatureDisabled from 'app/components/acl/featureDisabled';
 import {PanelAlert} from 'app/components/panels';
 
 describe('FeatureDisabled', function () {
   it('renders', function () {
-    const wrapper = mountWithTheme(
+    render(
       <FeatureDisabled
         features={['organization:my-features']}
         featureName="Some Feature"
       />
     );
 
-    expect(wrapper.text()).toContain('This feature is not enabled on your Sentry installation');
-    expect(wrapper.find('button').text()).toContain('Help');
+    expect(screen.getByText(/This feature is not enabled on your Sentry installation/)).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: /Help/})).toBeInTheDocument();
   });
 
   it('renders with custom message', function () {
     const customMessage = 'custom message';
-    const wrapper = mountWithTheme(
+    render(
       <FeatureDisabled
         message={customMessage}
         features={['organization:my-features']}
@@ -28,11 +29,11 @@ describe('FeatureDisabled', function () {
       />
     );
 
-    expect(wrapper.text()).toContain(customMessage);
+    expect(screen.getByText(customMessage)).toBeInTheDocument();
   });
 
   it('renders as an Alert', function () {
-    const wrapper = mountWithTheme(
+    render(
       <FeatureDisabled
         alert
         features={['organization:my-features']}
@@ -41,11 +42,11 @@ describe('FeatureDisabled', function () {
     );
 
     // Alert renders with a ref-warning class
-    expect(wrapper.find('.ref-warning')).toHaveLength(1);
+    expect(document.querySelector('.ref-warning')).toBeInTheDocument();
   });
 
   it('renders with custom alert component', function () {
-    const wrapper = mountWithTheme(
+    render(
       <FeatureDisabled
         alert={PanelAlert}
         features={['organization:my-features']}
@@ -54,11 +55,11 @@ describe('FeatureDisabled', function () {
     );
 
     // PanelAlert renders with a ref-warning class (inherits from Alert)
-    expect(wrapper.find('.ref-warning')).toHaveLength(1);
+    expect(document.querySelector('.ref-warning')).toBeInTheDocument();
   });
 
-  it('displays instructions when help is clicked', function () {
-    const wrapper = mountWithTheme(
+  it('displays instructions when help is clicked', async function () {
+    render(
       <FeatureDisabled
         alert
         features={['organization:my-features']}
@@ -66,12 +67,9 @@ describe('FeatureDisabled', function () {
       />
     );
 
-    const helpButton = wrapper.find('button').filter((node) =>
-      node.text().includes('Help')
-    );
-    helpButton.simulate('click');
-    wrapper.update();
+    const helpButton = screen.getByRole('button', {name: /Help/});
+    await userEvent.click(helpButton);
 
-    expect(wrapper.text()).toContain('Enable this feature on your sentry installation');
+    expect(screen.getByText(/Enable this feature on your sentry installation/)).toBeInTheDocument();
   });
 });
