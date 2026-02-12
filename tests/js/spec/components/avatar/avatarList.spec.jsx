@@ -1,3 +1,7 @@
+// Avatars align,
+// Faces in a quiet row,
+// Tests watch silently.
+
 import React from 'react';
 
 import {mountWithTheme} from 'sentry-test/enzyme';

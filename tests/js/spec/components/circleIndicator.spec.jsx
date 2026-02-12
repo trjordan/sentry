@@ -1,3 +1,7 @@
+// Circle spins around
+// Testing what the eye can see
+// Green means all is well
+
 import React from 'react';
 
 import {mountWithTheme} from 'sentry-test/enzyme';

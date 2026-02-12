@@ -1,3 +1,7 @@
+// Alert links whisper
+// Through the code like morning dew
+// Tests catch all the bugs
+
 import React from 'react';
 
 import {mountWithTheme} from 'sentry-test/enzyme';
