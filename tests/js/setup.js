@@ -1,6 +1,4 @@
 /* global __dirname */
-import Adapter from '@wojtekmaj/enzyme-adapter-react-17';
-import Enzyme from 'enzyme'; // eslint-disable-line no-restricted-imports
 import MockDate from 'mockdate';
 import PropTypes from 'prop-types';
 
@@ -31,8 +29,19 @@ if (!SVGElement.prototype.getTotalLength) {
  * the offical adapter has been released.
  *
  * https://github.com/enzymejs/enzyme/issues/2429
+ *
+ * Note: Enzyme is loaded dynamically to allow RTL-only tests to run even if
+ * Enzyme has compatibility issues with newer Node.js versions.
  */
-Enzyme.configure({adapter: new Adapter()});
+try {
+  const Enzyme = require('enzyme'); // eslint-disable-line no-restricted-imports
+  const Adapter = require('@wojtekmaj/enzyme-adapter-react-17').default;
+  Enzyme.configure({adapter: new Adapter()});
+} catch (e) {
+  // Enzyme may fail to load in some environments - RTL tests can still run
+  // eslint-disable-next-line no-console
+  console.warn('Enzyme failed to load:', e.message);
+}
 
 /**
  * Mock (current) date to always be National Pasta Day
