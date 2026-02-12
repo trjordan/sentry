@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import {render} from 'sentry-test/reactTestingLibrary';
 
 import Access from 'app/components/acl/access';
 import ConfigStore from 'app/stores/configStore';
@@ -18,11 +18,11 @@ describe('Access', function () {
     });
 
     it('has access when requireAll is false', function () {
-      mountWithTheme(
+      render(
         <Access access={['project:write', 'project:read', 'org:read']} requireAll={false}>
           {childrenMock}
         </Access>,
-        routerContext
+        {context: routerContext}
       );
 
       expect(childrenMock).toHaveBeenCalledWith({
@@ -32,9 +32,9 @@ describe('Access', function () {
     });
 
     it('has access', function () {
-      mountWithTheme(
+      render(
         <Access access={['project:write', 'project:read']}>{childrenMock}</Access>,
-        routerContext
+        {context: routerContext}
       );
 
       expect(childrenMock).toHaveBeenCalledWith({
@@ -44,9 +44,9 @@ describe('Access', function () {
     });
 
     it('has no access', function () {
-      mountWithTheme(
+      render(
         <Access access={['org:write']}>{childrenMock}</Access>,
-        routerContext
+        {context: routerContext}
       );
 
       expect(childrenMock).toHaveBeenCalledWith({
@@ -57,11 +57,11 @@ describe('Access', function () {
 
     it('calls render function when no access', function () {
       const noAccessRenderer = jest.fn(() => null);
-      mountWithTheme(
+      render(
         <Access access={['org:write']} renderNoAccessMessage={noAccessRenderer}>
           {childrenMock}
         </Access>,
-        routerContext
+        {context: routerContext}
       );
 
       expect(childrenMock).not.toHaveBeenCalled();
@@ -69,14 +69,14 @@ describe('Access', function () {
     });
 
     it('can specify org from props', function () {
-      mountWithTheme(
+      render(
         <Access
           organization={TestStubs.Organization({access: ['org:write']})}
           access={['org:write']}
         >
           {childrenMock}
         </Access>,
-        routerContext
+        {context: routerContext}
       );
 
       expect(childrenMock).toHaveBeenCalledWith({
@@ -86,9 +86,9 @@ describe('Access', function () {
     });
 
     it('handles no org/project', function () {
-      mountWithTheme(
+      render(
         <Access access={['org:write']}>{childrenMock}</Access>,
-        routerContext
+        {context: routerContext}
       );
 
       expect(childrenMock).toHaveBeenCalledWith(
@@ -105,7 +105,7 @@ describe('Access', function () {
         user: null,
       };
 
-      mountWithTheme(<Access>{childrenMock}</Access>, routerContext);
+      render(<Access>{childrenMock}</Access>, {context: routerContext});
 
       expect(childrenMock).toHaveBeenCalledWith({
         hasAccess: true,
@@ -117,7 +117,7 @@ describe('Access', function () {
       ConfigStore.config = {
         user: {isSuperuser: true},
       };
-      mountWithTheme(<Access isSuperuser>{childrenMock}</Access>, routerContext);
+      render(<Access isSuperuser>{childrenMock}</Access>, {context: routerContext});
 
       expect(childrenMock).toHaveBeenCalledWith({
         hasAccess: true,
@@ -129,7 +129,7 @@ describe('Access', function () {
       ConfigStore.config = {
         user: {isSuperuser: false},
       };
-      mountWithTheme(<Access isSuperuser>{childrenMock}</Access>, routerContext);
+      render(<Access isSuperuser>{childrenMock}</Access>, {context: routerContext});
 
       expect(childrenMock).toHaveBeenCalledWith({
         hasAccess: true,
@@ -139,55 +139,54 @@ describe('Access', function () {
   });
 
   describe('as React node', function () {
-    let wrapper;
-
     it('has access', function () {
-      wrapper = mountWithTheme(
+      const {container} = render(
         <Access access={['project:write']}>
           <div>The Child</div>
         </Access>,
-        routerContext
+        {context: routerContext}
       );
 
-      expect(wrapper.find('Access div').text()).toBe('The Child');
+      expect(container).toHaveTextContent('The Child');
     });
 
     it('has superuser', function () {
       ConfigStore.config = {
         user: {isSuperuser: true},
       };
-      wrapper = mountWithTheme(
+      const {container} = render(
         <Access isSuperuser>
           <div>The Child</div>
         </Access>,
-        routerContext
+        {context: routerContext}
       );
 
-      expect(wrapper.find('Access div').text()).toBe('The Child');
+      expect(container).toHaveTextContent('The Child');
     });
 
     it('has no access', function () {
-      wrapper = mountWithTheme(
+      const {container} = render(
         <Access access={['org:write']}>
           <div>The Child</div>
         </Access>,
-        routerContext
+        {context: routerContext}
       );
 
-      expect(wrapper.find('Access div')).toHaveLength(0);
+      expect(container).not.toHaveTextContent('The Child');
     });
 
     it('has no superuser', function () {
       ConfigStore.config = {
         user: {isSuperuser: false},
       };
-      wrapper = mountWithTheme(
+      const {container} = render(
         <Access isSuperuser>
           <div>The Child</div>
         </Access>,
-        routerContext
+        {context: routerContext}
       );
-      expect(wrapper.find('Access div')).toHaveLength(0);
+
+      expect(container).not.toHaveTextContent('The Child');
     });
   });
 });
