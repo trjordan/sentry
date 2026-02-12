@@ -38,7 +38,7 @@ module.exports = {
   ],
   coverageReporters: ['html', 'cobertura'],
   coverageDirectory: '.artifacts/coverage',
-  snapshotSerializers: ['enzyme-to-json/serializer'],
+  snapshotSerializers: [],
   moduleNameMapper: {
     '^sentry-test/(.*)': '<rootDir>/tests/js/sentry-test/$1',
     '\\.(css|less|png|jpg|mp4)$': '<rootDir>/tests/js/sentry-test/importStyleMock.js',
