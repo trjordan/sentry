@@ -1,6 +1,8 @@
 import React from 'react';
 
-import {mountWithTheme} from 'sentry-test/enzyme';
+import '@testing-library/jest-dom';
+
+import {render, screen} from 'sentry-test/rtl';
 
 import Feature from 'app/components/acl/feature';
 import ConfigStore from 'app/stores/configStore';
@@ -13,261 +15,243 @@ describe('Feature', function () {
   const project = TestStubs.Project({
     features: ['project-foo', 'project-bar'],
   });
-  const routerContext = TestStubs.routerContext([
-    {
-      organization,
-      project,
-    },
-  ]);
+  const config = ConfigStore.getConfig();
+
+  const defaultProps = {
+    organization,
+    project,
+    config,
+  };
 
   describe('as render prop', function () {
     const childrenMock = jest.fn().mockReturnValue(null);
+
     beforeEach(function () {
       childrenMock.mockClear();
     });
 
     it('has features', function () {
-      const features = ['org-foo', 'project-foo'];
-
-      mountWithTheme(
-        <Feature features={features}>{childrenMock}</Feature>,
-        routerContext
-      );
-
-      expect(childrenMock).toHaveBeenCalledWith({
-        hasFeature: true,
-        features,
-        organization,
-        project,
-        renderDisabled: false,
-      });
-    });
-
-    it('has features when requireAll is false', function () {
-      const features = ['org-foo', 'project-foo', 'apple'];
-
-      mountWithTheme(
-        <Feature features={features} requireAll={false}>
+      render(
+        <Feature features={['org-foo', 'org-bar']} {...defaultProps}>
           {childrenMock}
-        </Feature>,
-        routerContext
-      );
-
-      expect(childrenMock).toHaveBeenCalledWith({
-        hasFeature: true,
-        organization,
-        project,
-        features,
-        renderDisabled: false,
-      });
-    });
-
-    it('has no features', function () {
-      mountWithTheme(
-        <Feature features={['org-baz']}>{childrenMock}</Feature>,
-        routerContext
-      );
-
-      expect(childrenMock).toHaveBeenCalledWith({
-        hasFeature: false,
-        organization,
-        project,
-        features: ['org-baz'],
-        renderDisabled: false,
-      });
-    });
-
-    it('calls render function when no features', function () {
-      const noFeatureRenderer = jest.fn(() => null);
-      mountWithTheme(
-        <Feature features={['org-baz']} renderDisabled={noFeatureRenderer}>
-          {childrenMock}
-        </Feature>,
-        routerContext
-      );
-
-      expect(childrenMock).not.toHaveBeenCalled();
-      expect(noFeatureRenderer).toHaveBeenCalledWith({
-        hasFeature: false,
-        children: childrenMock,
-        organization,
-        project,
-        features: ['org-baz'],
-      });
-    });
-
-    it('can specify org from props', function () {
-      const customOrg = TestStubs.Organization({features: ['org-bazar']});
-      mountWithTheme(
-        <Feature organization={customOrg} features={['org-bazar']}>
-          {childrenMock}
-        </Feature>,
-        routerContext
-      );
-
-      expect(childrenMock).toHaveBeenCalledWith({
-        hasFeature: true,
-        organization: customOrg,
-        project,
-        features: ['org-bazar'],
-        renderDisabled: false,
-      });
-    });
-
-    it('can specify project from props', function () {
-      const customProject = TestStubs.Project({features: ['project-baz']});
-      mountWithTheme(
-        <Feature project={customProject} features={['project-baz']}>
-          {childrenMock}
-        </Feature>,
-        routerContext
-      );
-
-      expect(childrenMock).toHaveBeenCalledWith({
-        hasFeature: true,
-        organization,
-        project: customProject,
-        features: ['project-baz'],
-        renderDisabled: false,
-      });
-    });
-
-    it('handles no org/project', function () {
-      const features = ['org-foo', 'project-foo'];
-      mountWithTheme(
-        <Feature features={features}>{childrenMock}</Feature>,
-        routerContext
+        </Feature>
       );
 
       expect(childrenMock).toHaveBeenCalledWith(
         expect.objectContaining({
           hasFeature: true,
+          features: ['org-foo', 'org-bar'],
           organization,
           project,
-          features,
-          renderDisabled: false,
+        })
+      );
+    });
+
+    it('has features when requireAll is false', function () {
+      render(
+        <Feature features={['org-foo', 'org-bar', 'org-baz']} requireAll={false} {...defaultProps}>
+          {childrenMock}
+        </Feature>
+      );
+
+      expect(childrenMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasFeature: true,
+          features: ['org-foo', 'org-bar', 'org-baz'],
+        })
+      );
+    });
+
+    it('has no features', function () {
+      render(
+        <Feature features={['org-baz']} {...defaultProps}>
+          {childrenMock}
+        </Feature>
+      );
+
+      expect(childrenMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasFeature: false,
+          features: ['org-baz'],
+          organization,
+          project,
+        })
+      );
+    });
+
+    it('calls render function when no features', function () {
+      const noFeatureRenderer = jest.fn(() => null);
+      render(
+        <Feature features={['org-baz']} renderDisabled={noFeatureRenderer} {...defaultProps}>
+          {childrenMock}
+        </Feature>
+      );
+
+      expect(childrenMock).not.toHaveBeenCalled();
+      expect(noFeatureRenderer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasFeature: false,
+          features: ['org-baz'],
+          organization,
+          project,
+          children: childrenMock,
+        })
+      );
+    });
+
+    it('can specify organization from props', function () {
+      const customOrg = TestStubs.Organization({features: ['org-bazar']});
+      render(
+        <Feature
+          organization={customOrg}
+          project={project}
+          config={config}
+          features={['org-bazar']}
+        >
+          {childrenMock}
+        </Feature>
+      );
+
+      expect(childrenMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasFeature: true,
+          features: ['org-bazar'],
+          organization: customOrg,
+          project,
+        })
+      );
+    });
+
+    it('can specify project from props', function () {
+      const customProject = TestStubs.Project({features: ['project-baz']});
+      render(
+        <Feature
+          organization={organization}
+          project={customProject}
+          config={config}
+          features={['project-baz']}
+        >
+          {childrenMock}
+        </Feature>
+      );
+
+      expect(childrenMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasFeature: true,
+          features: ['project-baz'],
+          organization,
+          project: customProject,
         })
       );
     });
 
     it('handles features prefixed with org/project', function () {
-      mountWithTheme(
-        <Feature features={['organizations:org-bar']}>{childrenMock}</Feature>,
-        routerContext
+      render(
+        <Feature features={['organizations:org-bar']} {...defaultProps}>
+          {childrenMock}
+        </Feature>
       );
 
-      expect(childrenMock).toHaveBeenCalledWith({
-        hasFeature: true,
-        organization,
-        project,
-        features: ['organizations:org-bar'],
-        renderDisabled: false,
-      });
-
-      mountWithTheme(
-        <Feature features={['projects:bar']}>{childrenMock}</Feature>,
-        routerContext
+      expect(childrenMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasFeature: true,
+          features: ['organizations:org-bar'],
+          organization,
+          project,
+        })
       );
 
-      expect(childrenMock).toHaveBeenCalledWith({
-        hasFeature: false,
-        organization,
-        project,
-        features: ['projects:bar'],
-        renderDisabled: false,
-      });
+      childrenMock.mockClear();
+
+      render(
+        <Feature features={['projects:project-bar']} {...defaultProps}>
+          {childrenMock}
+        </Feature>
+      );
+
+      expect(childrenMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasFeature: true,
+          features: ['projects:project-bar'],
+          organization,
+          project,
+        })
+      );
     });
 
-    it('checks ConfigStore.config.features (e.g. `organizations:create`)', function () {
-      ConfigStore.config = {
-        features: new Set(['organizations:create']),
-      };
-      mountWithTheme(
-        <Feature features={['organizations:create']}>{childrenMock}</Feature>,
-        routerContext
-      );
-
-      expect(childrenMock).toHaveBeenCalledWith({
-        hasFeature: true,
-        organization,
-        project,
-        features: ['organizations:create'],
-        renderDisabled: false,
+    it('checks ConfigStore.config.features', function () {
+      ConfigStore.loadInitialData({
+        ...config,
+        features: new Set(['config-bar']),
       });
-    });
-  });
 
-  describe('no children', function () {
-    it('should display renderDisabled with no feature', function () {
-      const wrapper = mountWithTheme(
-        <Feature features={['nope']} renderDisabled={() => <span>disabled</span>} />,
-        routerContext
+      render(
+        <Feature features={['config-bar']} {...defaultProps} config={ConfigStore.getConfig()}>
+          {childrenMock}
+        </Feature>
       );
-      expect(wrapper.find('Feature span').text()).toBe('disabled');
-    });
 
-    it('should display be empty when on', function () {
-      const wrapper = mountWithTheme(
-        <Feature features={['org-bar']} renderDisabled={() => <span>disabled</span>} />,
-        routerContext
+      expect(childrenMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasFeature: true,
+          features: ['config-bar'],
+        })
       );
-      expect(wrapper.find('Feature').text()).toBe('');
+
+      // Reset ConfigStore
+      ConfigStore.loadInitialData(config);
     });
   });
 
   describe('as React node', function () {
     it('has features', function () {
-      const wrapper = mountWithTheme(
-        <Feature features={['org-bar']}>
+      render(
+        <Feature features={['org-bar']} {...defaultProps}>
           <div>The Child</div>
-        </Feature>,
-        routerContext
+        </Feature>
       );
 
-      expect(wrapper.find('Feature div').text()).toBe('The Child');
+      expect(screen.getByText('The Child')).toBeInTheDocument();
     });
 
     it('has no features', function () {
-      const wrapper = mountWithTheme(
-        <Feature features={['org-baz']}>
+      render(
+        <Feature features={['org-baz']} {...defaultProps}>
           <div>The Child</div>
-        </Feature>,
-        routerContext
+        </Feature>
       );
 
-      expect(wrapper.find('Feature div')).toHaveLength(0);
+      expect(screen.queryByText('The Child')).not.toBeInTheDocument();
     });
 
     it('renders a default disabled component', function () {
-      const wrapper = mountWithTheme(
-        <Feature features={['org-baz']} renderDisabled>
+      render(
+        <Feature features={['org-baz']} renderDisabled {...defaultProps}>
           <div>The Child</div>
-        </Feature>,
-        routerContext
+        </Feature>
       );
 
-      expect(wrapper.exists('ComingSoon')).toBe(true);
-      expect(wrapper.exists('Feature div[children="The Child"]')).not.toBe(true);
+      expect(screen.queryByText('The Child')).not.toBeInTheDocument();
+      expect(screen.getByText(/coming soon/i)).toBeInTheDocument();
     });
 
     it('calls renderDisabled function when no features', function () {
-      const noFeatureRenderer = jest.fn(() => null);
-      const children = <div>The Child</div>;
-      const wrapper = mountWithTheme(
-        <Feature features={['org-baz']} renderDisabled={noFeatureRenderer}>
-          {children}
-        </Feature>,
-        routerContext
+      const noFeatureRenderer = jest.fn(() => <div>No Feature</div>);
+      render(
+        <Feature features={['org-baz']} renderDisabled={noFeatureRenderer} {...defaultProps}>
+          <div>The Child</div>
+        </Feature>
       );
 
-      expect(wrapper.find('Feature div')).toHaveLength(0);
-      expect(noFeatureRenderer).toHaveBeenCalledWith({
-        hasFeature: false,
-        children,
-        organization,
-        project,
-        features: ['org-baz'],
-      });
+      expect(screen.getByText('No Feature')).toBeInTheDocument();
+      expect(noFeatureRenderer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasFeature: false,
+          features: ['org-baz'],
+          organization,
+          project,
+        })
+      );
     });
   });
 
@@ -276,32 +260,48 @@ describe('Feature', function () {
 
     beforeEach(function () {
       hookFn = jest.fn(() => null);
-      HookStore.hooks['feature-disabled:org-baz'] = [hookFn];
-      HookStore.hooks['feature-disabled:test-hook'] = [hookFn];
+      HookStore.init();
+      HookStore.add('feature-disabled:alerts-page', hookFn);
     });
 
     afterEach(function () {
-      delete HookStore.hooks['feature-disabled:org-baz'];
+      HookStore.init();
     });
 
     it('uses hookName if provided', function () {
-      const children = <div>The Child</div>;
-      const wrapper = mountWithTheme(
-        <Feature features={['org-bazar']} hookName="feature-disabled:test-hook">
-          {children}
-        </Feature>,
-        routerContext
+      render(
+        <Feature features={['org-baz']} hookName="feature-disabled:alerts-page" {...defaultProps}>
+          <div>The Child</div>
+        </Feature>
       );
 
-      expect(wrapper.find('Feature div')).toHaveLength(0);
+      expect(hookFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasFeature: false,
+          features: ['org-baz'],
+          organization,
+          project,
+          children: <div>The Child</div>,
+        })
+      );
+    });
 
-      expect(hookFn).toHaveBeenCalledWith({
-        hasFeature: false,
-        children,
-        organization,
-        project,
-        features: ['org-bazar'],
-      });
+    it('hookName overrides renderDisabled', function () {
+      const noFeatureRenderer = jest.fn(() => null);
+
+      render(
+        <Feature
+          features={['org-baz']}
+          hookName="feature-disabled:alerts-page"
+          renderDisabled={noFeatureRenderer}
+          {...defaultProps}
+        >
+          <div>The Child</div>
+        </Feature>
+      );
+
+      expect(hookFn).toHaveBeenCalled();
+      expect(noFeatureRenderer).not.toHaveBeenCalled();
     });
   });
 });
