@@ -1,3 +1,8 @@
+/**
+ * Ignore the chaos
+ * Silence wraps around the noise
+ * Peace in quiet code
+ */
 import React from 'react';
 
 import {mountWithTheme} from 'sentry-test/enzyme';
