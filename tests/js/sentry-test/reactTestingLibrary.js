@@ -1,7 +1,7 @@
 import React from 'react';
 import {cache} from '@emotion/css'; // eslint-disable-line emotion/no-vanilla
 import {CacheProvider, ThemeProvider} from '@emotion/react';
-import {render} from '@testing-library/react';
+import {render, screen} from '@testing-library/react';
 
 import {lightTheme} from 'app/utils/theme';
 
@@ -15,4 +15,4 @@ const renderWithTheme = (ui, opts) => {
   return render(ui, {wrapper: WrappingThemeProvider, ...opts});
 };
 
-export {renderWithTheme};
+export {renderWithTheme, screen};
